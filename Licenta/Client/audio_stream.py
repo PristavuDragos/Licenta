@@ -65,7 +65,7 @@ def start_audio_feed():
     audio_thread = threading.Thread(target=audio_feed)
     feed_is_on = True
     audio_thread.start()
-    audio_thread.join()
+#    audio_thread.join()
 
 
 def stop_audio_feed():

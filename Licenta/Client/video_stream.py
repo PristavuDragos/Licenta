@@ -3,6 +3,8 @@ import socket
 import cv2
 import imutils
 import threading
+import main_GUI
+
 
 UDP_packet_size = None
 server_PORT = None
@@ -26,11 +28,15 @@ def init(settings):
     global server_IP
     global UDPClientSocket
     global feed_is_on
+    global frame_width
+    global frame_height
     feed_is_on = False
     UDP_packet_size = settings["UDP_packet_size"]
     server_PORT = settings["server_PORT"]
     video_PORT = settings["video_PORT"]
     server_IP = settings["server_IP"]
+    frame_width = settings["video_default_width"]
+    frame_height = settings["video_default_height"]
     UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 
 
@@ -40,6 +46,8 @@ def video_feed():
     while feed_is_on:
         ret, frame = capture.read()
         frame = imutils.resize(frame, width=frame_width, height=frame_height)
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        main_GUI.main_window.show_video_feed(frame)
         timestamp = str(time.perf_counter() - initial_time)[0:7]
         byteImage = frame.tobytes()
         image_chunks = split_into_chunks(byteImage, UDP_packet_size)
@@ -61,7 +69,7 @@ def start_video_feed():
     video_thread = threading.Thread(target=video_feed)
     feed_is_on = True
     video_thread.start()
-    video_thread.join()
+#    video_thread.join()
 
 
 def stop_video_feed():

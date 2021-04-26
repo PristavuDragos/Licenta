@@ -7,7 +7,7 @@ global settings
 
 def init_settings():
     global settings
-    with open("../Assets/global_settings.json", "r") as settings_file:
+    with open("../Settings/global_settings.json", "r") as settings_file:
         settings = json.load(settings_file)
 
 
