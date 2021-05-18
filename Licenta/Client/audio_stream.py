@@ -2,8 +2,10 @@ import pyaudio
 import time
 import socket
 import threading
+import main_client
 
 UDP_packet_size = None
+UDP_payload_size = None
 server_PORT = None
 server_IP = None
 audio_PORT = None
@@ -11,12 +13,13 @@ channels = None
 fs = None
 sample_format = None
 sample_chunk_size = None
-UDPClientSocket = None
+sender_socket = None
 feed_is_on = None
 
 
-def init(settings):
+def init(settings, address):
     global UDP_packet_size
+    global UDP_payload_size
     global server_PORT
     global audio_PORT
     global server_IP
@@ -24,18 +27,19 @@ def init(settings):
     global fs
     global sample_format
     global sample_chunk_size
-    global UDPClientSocket
+    global sender_socket
     global feed_is_on
     feed_is_on = False
     UDP_packet_size = settings["UDP_packet_size"]
+    UDP_payload_size = settings["UDP_payload_size"]
     server_PORT = settings["server_PORT"]
-    audio_PORT = settings["audio_PORT"]
-    server_IP = settings["server_IP"]
+    audio_PORT = address[1]
+    server_IP = address[0]
     channels = settings["audio_channels"]
     fs = settings["audio_fs"]
     sample_chunk_size = settings["audio_sample_chunk_size"]
     sample_format = pyaudio.paInt16
-    UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+    sender_socket = main_client.sender_socket
 
 
 def audio_feed():
@@ -53,7 +57,7 @@ def audio_feed():
             payload += data
         timestamp = str(time.perf_counter() - initial_time)[0:7]
         header = bytes(timestamp + "\\/", "utf-8")
-        UDPClientSocket.sendto(header + payload, (server_IP, audio_PORT))
+        sender_socket.sendto(header + payload, (server_IP, audio_PORT))
 
     stream.stop_stream()
     stream.close()
