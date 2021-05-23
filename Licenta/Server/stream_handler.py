@@ -104,7 +104,6 @@ def process_video_packets():
             packet_number = int(header[1])
             client_id = (header[2], address[0], address[1])
             packets_per_frame_ = int(header[3])
-            print(header)
             if client_id in video_data_frames:
                 frame_data = video_data_frames[client_id]
                 if packet_number == 1 and timestamp > frame_data[1]:

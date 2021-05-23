@@ -58,7 +58,7 @@ def video_feed():
                            + str(packets_per_frame) + "\\/", "utf-8")
             sender_socket.sendto(header + chunk, (server_IP, video_PORT))
             chunk_order_number += 1
-            time.sleep(0.025)
+            time.sleep(0.1)
         if cv2.waitKey(1) & 0xFF == ord('q') or not feed_is_on:
             break
     capture.release()
@@ -68,23 +68,24 @@ def video_feed_test():
     initial_time = time.perf_counter()
     current_frame = 0
     while feed_is_on:
-        frame = cv2.imread("../Assets/GIF_Feed/frame_" + str(current_frame) + ".jpg")
-        current_frame = (current_frame + 1) % 35
-        frame = cv2.resize(frame, (frame_width, frame_height))
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        timestamp = str(time.perf_counter() - initial_time)[0:7]
-        byteImage = frame.tobytes()
-        image_chunks = functions.split_into_chunks(byteImage, UDP_payload_size)
-        chunk_order_number = 1
-        packets_per_frame = math.ceil(len(byteImage) / UDP_payload_size)
-        for chunk in image_chunks:
-            header = bytes(timestamp + "\\/" + str(chunk_order_number) + "\\/" + client_id + "\\/"
-                           + str(packets_per_frame) + "\\/", "utf-8")
-            sender_socket.sendto(header + chunk, (server_IP, video_PORT))
-            chunk_order_number += 1
-            time.sleep(0.05)
-        if not feed_is_on:
-            break
+        try:
+            frame = cv2.imread("../Assets/GIF_Feed/frame_" + str(current_frame) + ".jpg")
+            current_frame = (current_frame + 1) % 35
+            frame = cv2.resize(frame, (frame_width, frame_height))
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            timestamp = str(time.perf_counter() - initial_time)[0:7]
+            byteImage = frame.tobytes()
+            image_chunks = functions.split_into_chunks(byteImage, UDP_payload_size)
+            chunk_order_number = 1
+            packets_per_frame = math.ceil(len(byteImage) / UDP_payload_size)
+            for chunk in image_chunks:
+                header = bytes(timestamp + "\\/" + str(chunk_order_number) + "\\/" + client_id + "\\/"
+                               + str(packets_per_frame) + "\\/", "utf-8")
+                sender_socket.sendto(header + chunk, (server_IP, video_PORT))
+                chunk_order_number += 1
+                time.sleep(0.1)
+        except:
+            pass
 
 
 def start_video_feed():

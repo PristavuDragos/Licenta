@@ -1,11 +1,18 @@
 import json
 import sys
-import numpy as np
-from PyQt5 import QtGui
 
+import imutils
+import numpy as np
+import client_connection_manager
 import main_client
+from PyQt5 import QtGui
+from PyQt5.QtCore import QThreadPool
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QPushButton, QGridLayout
 from PyQt5.QtGui import QPixmap, QImage
+
+import feed_receiver
+from worker_thread import Worker
+from worker_signal import WorkerSignals
 
 settings = None
 main_window = None
@@ -27,21 +34,28 @@ class MainGUI(QWidget):
         self.label_grid = QGridLayout(self)
         self.test_button = QPushButton(self)
         self.user_button = QPushButton(self)
+        self.worker_threads = QThreadPool()
         self.window_title = settings["window_title"]
         self.window_width = settings["window_width"]
         self.window_height = settings["window_height"]
         self.init_ui()
 
-    def show_video_feed(self, byte_frame, participant_id):
-        if participant_id in self.video_labels.keys():
-            frame = np.frombuffer(byte_frame, dtype="B").reshape(240, 320, 3)
-            qt_frame = QImage(frame.data, frame.shape[1], frame.shape[0],
-                              QImage.Format_RGB888)
-            qt_frame = QPixmap.fromImage(qt_frame)
-            pixmap = QPixmap(qt_frame)
-            label = self.video_labels.get(participant_id)
-            label.resize(frame.shape[1], frame.shape[0])
-            label.setPixmap(pixmap)
+    def show_video_feed(self, frame_data):
+        try:
+            byte_frame = frame_data[0]
+            participant_id = frame_data[1]
+            if participant_id in self.video_labels.keys():
+                frame = np.frombuffer(byte_frame, dtype="B").reshape(main_client.settings["video_default_height"],
+                                                                     main_client.settings["video_default_width"], 3)
+                qt_frame = QImage(frame.data, frame.shape[1], frame.shape[0],
+                                  QImage.Format_RGB888)
+                qt_frame = QPixmap.fromImage(qt_frame)
+                pixmap = QPixmap(qt_frame)
+                label = self.video_labels.get(participant_id)
+                label.resize(frame.shape[1], frame.shape[0])
+                label.setPixmap(pixmap)
+        except BaseException as err:
+            print(str(err))
 
     def set_participant_list(self, participant_list):
         global participants
@@ -53,22 +67,39 @@ class MainGUI(QWidget):
         for it in participants:
             label = QLabel(self)
             label.resize(320, 240)
-            default_label = QtGui.QPixmap(320, 240)
+            default_label = QtGui.QPixmap(main_client.settings["video_default_width"],
+                                          main_client.settings["video_default_height"])
             default_label.fill(QtGui.QColor("black"))
             label.setPixmap(default_label)
             self.video_labels[it] = label
-            self.label_grid.addWidget(label, counter // 3, counter % 3)
+            self.label_grid.addWidget(label, counter // 4, counter % 4)
             counter += 1
 
+    def start_packet_receiver(self):
+        worker = Worker(client_connection_manager.packet_receiver)
+        worker.signals.update.connect(self.set_participant_list)
+        worker.signals.connected.connect(self.start_video_packet_processor)
+        self.worker_threads.start(worker)
+
+    def start_video_packet_processor(self):
+        worker = Worker(feed_receiver.process_video_packets)
+        worker.signals.send_data.connect(self.show_video_feed)
+        self.worker_threads.start(worker)
+
     def test_button_action(self):
+        self.start_packet_receiver()
         self.user_button.hide()
         self.test_button.hide()
         main_client.connect_to_server_test()
 
     def user_button_action(self):
         # self.user_button.hide()
+        self.start_packet_receiver()
         self.test_button.hide()
         main_client.connect_to_server()
+
+    def closeEvent(self, event):
+        main_client.close()
 
     def init_ui(self):
         main_client.init_settings()
@@ -87,9 +118,6 @@ class MainGUI(QWidget):
         self.update_grid.hide()
         self.setLayout(self.label_grid)
         self.show()
-
-    def closeEvent(self, event):
-        main_client.close()
 
 
 def start_ui():

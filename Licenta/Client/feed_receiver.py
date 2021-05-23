@@ -1,6 +1,8 @@
 import math
 import socket
 import threading
+from queue import Queue
+
 import main_GUI
 import pyaudio
 import main_client
@@ -11,6 +13,7 @@ UDP_payload_size = None
 UDP_video_socket = None
 UDP_audio_socket = None
 video_data_frames = None
+video_packet_queue = None
 audio_data_queue = None
 channels = None
 fs = None
@@ -40,6 +43,8 @@ def init(settings):
     global sample_format
     global sample_chunk_size
     global packets_per_frame
+    global video_packet_queue
+    video_packet_queue = Queue()
     local_IP = settings["server_IP"]
     frame_width = settings["video_default_width"]
     frame_height = settings["video_default_height"]
@@ -56,38 +61,42 @@ def init(settings):
     video_data_frames = {}
 
 
-def process_video_packets(packet):
+def process_video_packets(**signals):
     global video_data_frames
-    header = packet[0][:23].decode().split("\/")
-    timestamp = float(header[0])
-    packet_number = int(header[1])
-    client_id = header[2]
-    packets_per_frame_ = int(header[3])
-    if client_id in video_data_frames:
-        frame_data = video_data_frames[client_id]
-        if packet_number == 1 and timestamp > frame_data[1]:
-            payload = b""
-            payload += packet[0][23:]
-            video_data_frames[client_id] = [payload, timestamp, packet_number]
-            if packet_number == packets_per_frame_:
-                main_client.main_window.show_video_feed((video_data_frames.pop(client_id))[0], client_id)
-        elif packet_number == frame_data[2] + 1 and timestamp == frame_data[1]:
-            frame_data[0] += packet[0][23:]
-            frame_data[2] = packet_number
-            if packet_number == packets_per_frame_:
-                main_client.main_window.show_video_feed(frame_data[0], client_id)
-                del video_data_frames[client_id]
+    global video_packet_queue
+    while video_receiver_on:
+        if not video_packet_queue.empty():
+            packet = video_packet_queue.get()
+            header = packet[0][:23].decode().split("\/")
+            timestamp = float(header[0])
+            packet_number = int(header[1])
+            client_id = header[2]
+            packets_per_frame_ = int(header[3])
+            if client_id in video_data_frames:
+                frame_data = video_data_frames[client_id]
+                if packet_number == 1 and timestamp > frame_data[1]:
+                    payload = b""
+                    payload += packet[0][23:]
+                    video_data_frames[client_id] = [payload, timestamp, packet_number]
+                    if packet_number == packets_per_frame_:
+                        signals["send_data"].emit(((video_data_frames.pop(client_id))[0], client_id))
+                elif packet_number == frame_data[2] + 1 and timestamp == frame_data[1]:
+                    frame_data[0] += packet[0][23:]
+                    frame_data[2] = packet_number
+                    if packet_number == packets_per_frame_:
+                        signals["send_data"].emit((frame_data[0], client_id))
+                        del video_data_frames[client_id]
+                    else:
+                        video_data_frames[client_id] = frame_data
+                else:
+                    del video_data_frames[client_id]
             else:
-                video_data_frames[client_id] = frame_data
-        else:
-            del video_data_frames[client_id]
-    else:
-        if packet_number == 1:
-            payload = b""
-            payload += packet[0][23:]
-            video_data_frames[client_id] = [payload, timestamp, packet_number]
-            if packet_number == packets_per_frame_:
-                main_client.main_window.show_video_feed((video_data_frames.pop(client_id))[0], client_id)
+                if packet_number == 1:
+                    payload = b""
+                    payload += packet[0][23:]
+                    video_data_frames[client_id] = [payload, timestamp, packet_number]
+                    if packet_number == packets_per_frame_:
+                        signals["send_data"].emit(((video_data_frames.pop(client_id))[0], client_id))
 
 
 def process_audio_packets(packet):
@@ -97,7 +106,7 @@ def process_audio_packets(packet):
 def receive_video():
     while video_receiver_on:
         try:
-            process_video_packets(UDP_video_socket.recvfrom(UDP_packet_size))
+            video_packet_queue.put(UDP_video_socket.recvfrom(UDP_packet_size))
         except:
             pass
 

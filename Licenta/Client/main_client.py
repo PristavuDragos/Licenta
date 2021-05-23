@@ -44,7 +44,6 @@ def set_participant_list(string_list):
     for iterator in range(len(string_list)):
         if iterator % 2 == 1:
             participant_list.append(string_list[iterator])
-    main_GUI.main_window.set_participant_list(participant_list)
 
 
 def set_addresses(addresses):
