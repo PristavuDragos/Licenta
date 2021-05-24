@@ -3,6 +3,9 @@ import socket
 import threading
 from queue import Queue
 
+import numpy as np
+from PyQt5.QtGui import QImage, QPixmap
+
 import main_GUI
 import pyaudio
 import main_client
@@ -79,12 +82,24 @@ def process_video_packets(**signals):
                     payload += packet[0][23:]
                     video_data_frames[client_id] = [payload, timestamp, packet_number]
                     if packet_number == packets_per_frame_:
-                        signals["send_data"].emit(((video_data_frames.pop(client_id))[0], client_id))
+                        frame = np.frombuffer((video_data_frames.pop(client_id))[0], dtype="B").reshape(
+                            main_client.settings["video_default_height"],
+                            main_client.settings["video_default_width"], 3)
+                        qt_frame = QImage(frame.data, frame.shape[1], frame.shape[0],
+                                          QImage.Format_RGB888)
+                        pixmap = QPixmap.fromImage(qt_frame)
+                        signals["send_data"].emit((pixmap, client_id))
                 elif packet_number == frame_data[2] + 1 and timestamp == frame_data[1]:
                     frame_data[0] += packet[0][23:]
                     frame_data[2] = packet_number
                     if packet_number == packets_per_frame_:
-                        signals["send_data"].emit((frame_data[0], client_id))
+                        frame = np.frombuffer(frame_data[0], dtype="B").reshape(
+                            main_client.settings["video_default_height"],
+                            main_client.settings["video_default_width"], 3)
+                        qt_frame = QImage(frame.data, frame.shape[1], frame.shape[0],
+                                          QImage.Format_RGB888)
+                        pixmap = QPixmap.fromImage(qt_frame)
+                        signals["send_data"].emit((pixmap, client_id))
                         del video_data_frames[client_id]
                     else:
                         video_data_frames[client_id] = frame_data
@@ -96,7 +111,13 @@ def process_video_packets(**signals):
                     payload += packet[0][23:]
                     video_data_frames[client_id] = [payload, timestamp, packet_number]
                     if packet_number == packets_per_frame_:
-                        signals["send_data"].emit(((video_data_frames.pop(client_id))[0], client_id))
+                        frame = np.frombuffer((video_data_frames.pop(client_id))[0], dtype="B").reshape(
+                            main_client.settings["video_default_height"],
+                            main_client.settings["video_default_width"], 3)
+                        qt_frame = QImage(frame.data, frame.shape[1], frame.shape[0],
+                                          QImage.Format_RGB888)
+                        pixmap = QPixmap.fromImage(qt_frame)
+                        signals["send_data"].emit((pixmap, client_id))
 
 
 def process_audio_packets(packet):

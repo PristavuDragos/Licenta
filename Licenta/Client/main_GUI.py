@@ -42,17 +42,10 @@ class MainGUI(QWidget):
 
     def show_video_feed(self, frame_data):
         try:
-            byte_frame = frame_data[0]
+            pixmap = frame_data[0]
             participant_id = frame_data[1]
             if participant_id in self.video_labels.keys():
-                frame = np.frombuffer(byte_frame, dtype="B").reshape(main_client.settings["video_default_height"],
-                                                                     main_client.settings["video_default_width"], 3)
-                qt_frame = QImage(frame.data, frame.shape[1], frame.shape[0],
-                                  QImage.Format_RGB888)
-                qt_frame = QPixmap.fromImage(qt_frame)
-                pixmap = QPixmap(qt_frame)
                 label = self.video_labels.get(participant_id)
-                label.resize(frame.shape[1], frame.shape[0])
                 label.setPixmap(pixmap)
         except BaseException as err:
             print(str(err))
