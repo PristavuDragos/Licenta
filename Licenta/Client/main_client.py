@@ -82,6 +82,7 @@ def connect_to_server_test():
 
 
 def close():
+    client_connection_manager.disconnect_from_session()
     video_stream.stop_video_feed()
     audio_stream.stop_audio_feed()
     feed_receiver.stop_audio_receiver()
