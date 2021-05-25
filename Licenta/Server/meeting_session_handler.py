@@ -64,18 +64,32 @@ def check_session_still_active():
             session_active = True
 
 
-def run_session(session_id):
+def run_session(session_id, settings):
     global participants_keep_alive
+    timer = time.perf_counter()
     while session_active:
         try:
-            packet = session_socket.recvfrom(main_server.settings["UDP_packet_size"])
+            packet = session_socket.recvfrom(settings["UDP_packet_size"])
             payload = packet[0].decode().split("\/")
             if payload[0] == "KeepAlive":
                 participants_keep_alive[payload[1]] = time.perf_counter()
             elif payload[0] == "RequireFeeds":
                 pass
-        except:
+            elif payload[0] == "Disconnect":
+                disconnect_client(payload[1])
+        except Exception as err:
+            print(str(err))
             pass
+        current_time = time.perf_counter()
+        if current_time - timer > 10:
+            timer = current_time
+            clients_to_dc = []
+            for client_id, timestamp in participants_keep_alive.items():
+                print(current_time - timestamp)
+                if current_time - timestamp > settings["connection_timeout"]:
+                    clients_to_dc.append(client_id)
+            for client_id in clients_to_dc:
+                disconnect_client(client_id)
         check_session_still_active()
 
 
@@ -87,7 +101,9 @@ def close_session(session_id):
 
 
 def start_session(session_id, session_owner, settings):
-    session_thread = threading.Thread(target=run_session, args=[session_id])
+    global session_active
+    session_active = True
+    session_thread = threading.Thread(target=run_session, args=[session_id, settings])
     init_session(session_owner, settings)
     session_thread.start()
     return stream_handler.start_stream_handler(settings, session_socket.getsockname())

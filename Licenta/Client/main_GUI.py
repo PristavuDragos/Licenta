@@ -57,6 +57,7 @@ class MainGUI(QWidget):
 
     def set_grid(self):
         counter = 0
+        self.reset_grid()
         for it in participants:
             label = QLabel(self)
             label.resize(320, 240)
@@ -67,6 +68,13 @@ class MainGUI(QWidget):
             self.video_labels[it] = label
             self.label_grid.addWidget(label, counter // 4, counter % 4)
             counter += 1
+
+    def reset_grid(self):
+        while self.label_grid.count():
+            item = self.label_grid.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)
 
     def start_packet_receiver(self):
         worker = Worker(client_connection_manager.packet_receiver)

@@ -6,18 +6,24 @@ import threading
 received_response = None
 receive_packets = None
 connection_timeout = None
+server_session_address = None
 
 
 def packet_receiver(**signals):
     global received_response
     global connection_timeout
     global receive_packets
+    global server_session_address
     receive_packets = True
     connection_timeout = time.perf_counter()
     socket = main_client.main_client_socket
     last_ka_packet_sent = time.perf_counter()
     while receive_packets:
         try:
+            timestamp = time.perf_counter()
+            if timestamp - last_ka_packet_sent > 4:
+                last_ka_packet_sent = timestamp
+                keep_connection_alive()
             packet = socket.recvfrom(main_client.settings["UDP_packet_size"])
             payload = packet[0].decode().split("\/")
             print(payload)
@@ -26,18 +32,18 @@ def packet_receiver(**signals):
             elif payload[0] == "Connection Accepted":
                 received_response = True
                 main_client.set_addresses([(payload[1], int(payload[2])), (payload[3], int(payload[4]))])
+                server_session_address = (payload[5], int(payload[6]))
                 signals["connected"].emit()
             elif payload[0] == "ParticipantsList":
                 main_client.set_participant_list(payload[1])
-                print(signals)
                 signals["update_callback"].emit(main_client.participant_list)
                 connection_timeout = time.perf_counter()
+            elif payload[0] == "KeepAlive":
+                connection_timeout = time.perf_counter()
         except:
-            if time.perf_counter() - last_ka_packet_sent > 14:
-                keep_connection_alive()
-            if time.perf_counter() - connection_timeout > 149:
-                #disconnect
-                #receive_packets = False
+            if time.perf_counter() - connection_timeout > main_client.settings["connection_timeout"]:
+                main_client.close()
+                receive_packets = False
                 pass
 
 
@@ -90,10 +96,18 @@ def connect_to_session(params, settings):
         return True
 
 
+def disconnect_from_session():
+    global server_session_address
+    sender_socket = main_client.sender_socket
+    message = bytes("Disconnect" + "\\/" + str(main_client.client_id) + "\\/", "utf-8")
+    sender_socket.sendto(message, server_session_address)
+
+
 def keep_connection_alive():
+    global server_session_address
     sender_socket = main_client.sender_socket
     message = bytes("KeepAlive" + "\\/" + str(main_client.client_id) + "\\/", "utf-8")
-    sender_socket.sendto(message, (main_client.settings["server_IP"], main_client.settings["server_PORT"]))
+    sender_socket.sendto(message, server_session_address)
 
 
 def require_feeds(client_ids):
