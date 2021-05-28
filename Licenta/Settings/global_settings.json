@@ -3,7 +3,7 @@
   "audio_PORT": 5008,
   "video_PORT": 5009,
   "connection_port": 5010,
-  "server_IP": "127.0.0.1",
+  "server_IP": "192.168.0.103",
   "UDP_packet_size": 65000,
   "UDP_payload_size": 64000,
   "audio_channels": 2,
@@ -11,5 +11,6 @@
   "audio_sample_chunk_size": 1024,
   "video_default_width": 168,
   "video_default_height": 126,
-  "connection_timeout": 149
+  "connection_timeout": 149,
+  "local_ip": "127.0.0.1"
 }

@@ -23,9 +23,13 @@ def init_settings():
     global sender_socket
     with open("../Settings/global_settings.json", "r") as settings_file:
         settings = json.load(settings_file)
+    temp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    temp_socket.connect(('8.8.8.8', 1))
+    settings["local_ip"] = temp_socket.getsockname()[0]
+    del temp_socket
     main_client_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
     main_client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    main_client_socket.bind((settings["server_IP"], 0))
+    main_client_socket.bind((settings["local_ip"], 0))
     main_client_socket.settimeout(5)
     sender_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
     get_client_id()

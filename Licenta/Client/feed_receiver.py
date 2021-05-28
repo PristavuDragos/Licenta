@@ -48,7 +48,7 @@ def init(settings):
     global packets_per_frame
     global video_packet_queue
     video_packet_queue = Queue()
-    local_IP = settings["server_IP"]
+    local_IP = settings["local_ip"]
     frame_width = settings["video_default_width"]
     frame_height = settings["video_default_height"]
     UDP_packet_size = settings["UDP_packet_size"]
