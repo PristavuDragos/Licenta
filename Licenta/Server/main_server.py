@@ -17,10 +17,12 @@ def init_settings():
 
 
 def run_server():
+    print(main_server_socket.getsockname())
     while keep_server_up:
         try:
             packet = main_server_socket.recvfrom(settings["UDP_packet_size"])
             payload = packet[0].decode().split("\/")
+            print(payload)
             if payload[0] == "CreateSession":
                 create_request(payload)
             elif payload[0] == "ConnectToSession":

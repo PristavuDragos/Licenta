@@ -55,6 +55,13 @@ def send_participant_list():
         sender_socket.sendto(message, address)
 
 
+def send_keep_alive_packet(client_id):
+    if client_id in participants:
+        address = participants.get(client_id)[2]
+        message = bytes("KeepAlive" + "\\/", "utf-8")
+        sender_socket.sendto(message, address)
+
+
 def check_session_still_active():
     global session_active
     if session_active:
@@ -73,19 +80,18 @@ def run_session(session_id, settings):
             payload = packet[0].decode().split("\/")
             if payload[0] == "KeepAlive":
                 participants_keep_alive[payload[1]] = time.perf_counter()
+                send_keep_alive_packet(payload[1])
             elif payload[0] == "RequireFeeds":
                 pass
             elif payload[0] == "Disconnect":
                 disconnect_client(payload[1])
         except Exception as err:
-            print(str(err))
             pass
         current_time = time.perf_counter()
         if current_time - timer > 10:
             timer = current_time
             clients_to_dc = []
             for client_id, timestamp in participants_keep_alive.items():
-                print(current_time - timestamp)
                 if current_time - timestamp > settings["connection_timeout"]:
                     clients_to_dc.append(client_id)
             for client_id in clients_to_dc:

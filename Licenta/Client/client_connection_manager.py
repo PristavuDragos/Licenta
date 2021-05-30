@@ -26,7 +26,8 @@ def packet_receiver(**signals):
                 keep_connection_alive()
             packet = socket.recvfrom(main_client.settings["UDP_packet_size"])
             payload = packet[0].decode().split("\/")
-            print(payload)
+            if payload[0] != "KeepAlive":
+                print(payload)
             if payload[0] == "Request Accepted":
                 received_response = True
             elif payload[0] == "Connection Accepted":

@@ -42,11 +42,9 @@ class MainGUI(QWidget):
 
     def show_video_feed(self, frame_data):
         try:
-            pixmap = frame_data[0]
-            participant_id = frame_data[1]
-            if participant_id in self.video_labels.keys():
-                label = self.video_labels.get(participant_id)
-                label.setPixmap(pixmap)
+            if frame_data[1] in self.video_labels.keys():
+                label = self.video_labels.get(frame_data[1])
+                label.setPixmap(frame_data[0])
         except BaseException as err:
             print(str(err))
 
