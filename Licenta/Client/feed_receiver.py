@@ -1,12 +1,14 @@
 import math
 import socket
 import threading
+
+from playsound import playsound
 from queue import Queue
 
 import numpy as np
 from PyQt5.QtGui import QImage, QPixmap
 
-import main_GUI
+import audio_player
 import pyaudio
 import main_client
 
@@ -121,7 +123,7 @@ def process_video_packets(**signals):
 
 
 def process_audio_packets(packet):
-    pass
+    audio_player.play_audio_feed(packet[0][12:])
 
 
 def receive_video():
@@ -158,6 +160,7 @@ def start_audio_receiver():
     UDP_audio_socket.settimeout(5)
     audio_handler_thread = threading.Thread(target=receive_audio)
     audio_receiver_on = True
+    audio_player.init()
     audio_handler_thread.start()
     return UDP_audio_socket.getsockname()
 

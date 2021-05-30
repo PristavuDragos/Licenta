@@ -65,9 +65,18 @@ def init(settings):
     audio_data_queue = Queue()
 
 
-def send_audio_to_participants(payload):
-    # trimite la toti clientii
-    pass
+def send_audio_to_participants(payload, timestamp):
+    participants = meeting_session_handler.participants
+    try:
+        for client_id, client_addresses in participants.items():
+            address = client_addresses[1]
+            while len(timestamp) < 7:
+                timestamp = timestamp + "0"
+            header = bytes(str(timestamp) + "\\/", "utf-8")
+            stream_sender_socket.sendto(header + payload, address)
+    except Exception as err:
+        print(str(err))
+        send_audio_to_participants(payload)
 
 
 def send_video_to_participants(payload, frame_client_id):
@@ -135,8 +144,7 @@ def process_video_packets():
 
 
 def process_audio_packets(packet):
-    payload = packet[0][9:]
-    send_audio_to_participants(payload)
+    send_audio_to_participants(packet[0][9:], packet[0][:7])
 
 
 def receive_video():

@@ -1,6 +1,5 @@
 import pyaudio
 import time
-import socket
 import threading
 import main_client
 
@@ -52,7 +51,7 @@ def audio_feed():
                     input=True)
     while feed_is_on:
         payload = b""
-        while len(payload) < 20480:
+        while len(payload) < 61440:
             data = stream.read(sample_chunk_size)
             payload += data
         timestamp = str(time.perf_counter() - initial_time)[0:7]
