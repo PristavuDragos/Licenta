@@ -1,13 +1,9 @@
 import math
 import socket
 import threading
-
-from playsound import playsound
 from queue import Queue
-
 import numpy as np
 from PyQt5.QtGui import QImage, QPixmap
-
 import audio_player
 import pyaudio
 import main_client

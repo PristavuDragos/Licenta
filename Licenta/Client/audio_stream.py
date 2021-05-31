@@ -2,6 +2,7 @@ import pyaudio
 import time
 import threading
 import main_client
+import wave
 
 UDP_packet_size = None
 UDP_payload_size = None
@@ -42,6 +43,7 @@ def init(settings, address):
 
 
 def audio_feed():
+    #audio_test()
     initial_time = time.perf_counter()
     p = pyaudio.PyAudio()
     stream = p.open(format=sample_format,
@@ -57,6 +59,35 @@ def audio_feed():
         timestamp = str(time.perf_counter() - initial_time)[0:7]
         header = bytes(timestamp + "\\/", "utf-8")
         sender_socket.sendto(header + payload, (server_IP, audio_PORT))
+
+    stream.stop_stream()
+    stream.close()
+    p.terminate()
+
+
+def audio_test():
+    initial_time = time.perf_counter()
+    p = pyaudio.PyAudio()
+    stream = p.open(format=sample_format,
+                    channels=channels,
+                    rate=fs,
+                    frames_per_buffer=sample_chunk_size,
+                    input=True)
+    filename = "../Assets/WAV_files/applause.wav"
+    af = wave.open(filename, 'rb')
+    while feed_is_on:
+        data = af.readframes(sample_chunk_size)
+        if data == "":
+            af = wave.open(filename, 'rb')
+            data = af.readframes(sample_chunk_size)
+        payload = b""
+        while len(payload) < 61440:
+            payload += data
+            data = af.readframes(sample_chunk_size)
+        timestamp = str(time.perf_counter() - initial_time)[0:7]
+        header = bytes(timestamp + "\\/", "utf-8")
+        sender_socket.sendto(header + payload, (server_IP, audio_PORT))
+        time.sleep(0.3)
 
     stream.stop_stream()
     stream.close()
