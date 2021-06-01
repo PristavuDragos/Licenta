@@ -28,6 +28,27 @@ stream_sender_socket = None
 video_packet_queue = None
 
 
+class StreamHandler:
+    def __init__(self, settings):
+        self.local_IP = settings["server_IP"]
+        self.frame_width = settings["video_default_width"]
+        self.frame_height = settings["video_default_height"]
+        self.UDP_packet_size = settings["UDP_packet_size"]
+        self.UDP_payload_size = settings["UDP_payload_size"]
+        self.channels = settings["audio_channels"]
+        self.fs = settings["audio_fs"]
+        self.sample_chunk_size = settings["audio_sample_chunk_size"]
+        self.sample_format = pyaudio.paInt16
+        self.frame_size = 3 * frame_width * frame_height
+        self.packets_per_frame = math.ceil(frame_size / UDP_payload_size)
+        self.UDP_video_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+        self.UDP_audio_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+        self.stream_sender_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+        self.video_data_frames = {}
+        self.video_packet_queue = Queue()
+        self.audio_data_queue = Queue()
+
+
 def init(settings):
     global local_IP
     global UDP_packet_size
