@@ -89,13 +89,13 @@ class MainGUI(QWidget):
         self.start_packet_receiver()
         self.user_button.hide()
         self.test_button.hide()
-        main_client.connect_to_server_test()
+        main_client.connect_to_server_test("0")
 
     def user_button_action(self):
         # self.user_button.hide()
         self.start_packet_receiver()
         self.test_button.hide()
-        main_client.connect_to_server()
+        main_client.connect_to_server("0")
 
     def closeEvent(self, event):
         main_client.close()

@@ -68,17 +68,17 @@ def start_client():
     main_GUI.start_ui()
 
 
-def connect_to_server():
+def connect_to_server(session_id):
     if client_connection_manager.initiate_session():
-        if client_connection_manager.connect_to_session("Test", settings):
+        if client_connection_manager.connect_to_session(session_id, settings):
             audio_stream.init(settings, server_stream_addresses[1])
             audio_stream.start_audio_feed()
             video_stream.init(settings, server_stream_addresses[0])
             video_stream.start_video_feed()
 
 
-def connect_to_server_test():
-    if client_connection_manager.connect_to_session("Test", settings):
+def connect_to_server_test(session_id):
+    if client_connection_manager.connect_to_session(session_id, settings):
         audio_stream.init(settings, server_stream_addresses[1])
         audio_stream.start_audio_feed()
         video_stream.init(settings, server_stream_addresses[0])

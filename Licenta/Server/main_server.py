@@ -7,6 +7,7 @@ settings = None
 keep_server_up = None
 main_server_socket = None
 server_sender_socket = None
+existing_sessions_addresses = None
 existing_sessions = None
 
 
@@ -34,7 +35,8 @@ def run_server():
 def create_request(payload):
     try:
         address = (payload[2], int(payload[3]))
-        start_meeting_session("Test", [payload[1], payload[2], payload[3]])
+        session_id = "0"
+        start_meeting_session(session_id, [payload[1], payload[2], payload[3]])
         message = bytes("Request Accepted" + "\\/", "utf-8")
         server_sender_socket.sendto(message, address)
     except BaseException as err:
@@ -43,11 +45,11 @@ def create_request(payload):
 
 def connect_request(payload):
     address = (payload[2], int(payload[3]))
-    meeting_session_handler.connect_client([payload[1], payload[5], payload[6], payload[7],
-                                            payload[8], payload[2], payload[3]])
     session_id = payload[4]
-    if session_id in existing_sessions:
-        session_addresses = existing_sessions[session_id]
+    if session_id in existing_sessions_addresses:
+        existing_sessions.get(session_id).connect_client([payload[1], payload[5], payload[6], payload[7],
+                                                          payload[8], payload[2], payload[3]])
+        session_addresses = existing_sessions_addresses[session_id]
         message = bytes("Connection Accepted" + "\\/" + str(session_addresses[0][0]) + "\\/"
                         + str(session_addresses[0][1]) + "\\/" + str(session_addresses[1][0])
                         + "\\/" + str(session_addresses[1][1]) + "\\/" + str(session_addresses[2][0])
@@ -59,23 +61,29 @@ def connect_request(payload):
 
 def server_stopping():
     global keep_server_up
+    global existing_sessions
     while keep_server_up:
         input_string = input("Q/Quit/q/quit to stop server:\n")
         if input_string in ["q", "Q", "quit", "Quit"]:
             keep_server_up = False
-            meeting_session_handler.close_session("Test")
+            for session_id in existing_sessions.keys():
+                existing_sessions.pop(session_id).close_session()
 
 
 def start_meeting_session(session_id, owner):
+    global existing_sessions_addresses
     global existing_sessions
-    if session_id not in existing_sessions:
-        existing_sessions[session_id] = meeting_session_handler.start_session(session_id, owner, settings)
+    if session_id not in existing_sessions_addresses:
+        session = meeting_session_handler.MeetingSession(owner, session_id, settings)
+        existing_sessions[session_id] = session
+        existing_sessions_addresses[session_id] = session.start_session(session_id, settings)
 
 
 def start_server():
     global keep_server_up
     global main_server_socket
     global server_sender_socket
+    global existing_sessions_addresses
     global existing_sessions
     init_settings()
     try:
@@ -88,6 +96,7 @@ def start_server():
         print("An error occurred while starting the server: " + str(err))
     else:
         print("Server is running.")
+    existing_sessions_addresses = {}
     existing_sessions = {}
     keep_server_up = True
     stopper_thread = threading.Thread(target=server_stopping)
