@@ -8,6 +8,7 @@ import main_server
 
 class MeetingSession:
     def __init__(self, session_owner, session_id, settings):
+        self.settings = settings
         self.session_thread = threading.Thread(target=self.run_session, args=[session_id, settings])
         self.session_active = True
         self.participants = {}
@@ -18,6 +19,7 @@ class MeetingSession:
         self.session_socket.bind((settings["server_IP"], 0))
         self.session_socket.settimeout(5)
         self.sender_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+        self.stream_handler = stream_handler.StreamHandler(settings, self)
 
     def connect_client(self, params):
         client_id = str(params[0])
@@ -87,6 +89,12 @@ class MeetingSession:
         self.session_active = True
         self.session_thread.start()
         return stream_handler.start_stream_handler(settings, self.session_socket.getsockname())
+
+    def start_session(self, session_id, settings):
+        self.session_active = True
+        self.session_thread = threading.Thread(target=self.run_session, args=[session_id, settings])
+        self.session_thread.start()
+        return self.stream_handler.start_stream_handler(self.session_socket.getsockname())
 
 
 # def init_session(session_owner, settings):
@@ -182,10 +190,10 @@ class MeetingSession:
 #     stream_handler.stop_video_receiver()
 
 
-def start_session(session_id, session_owner, settings):
-    global session_active
-    session_active = True
-    session_thread = threading.Thread(target=run_session, args=[session_id, settings])
-    init_session(session_owner, settings)
-    session_thread.start()
-    return stream_handler.start_stream_handler(settings, session_socket.getsockname())
+# def start_session(session_id, session_owner, settings):
+#     global session_active
+#     session_active = True
+#     session_thread = threading.Thread(target=run_session, args=[session_id, settings])
+#     init_session(session_owner, settings)
+#     session_thread.start()
+#     return stream_handler.start_stream_handler(settings, session_socket.getsockname())
