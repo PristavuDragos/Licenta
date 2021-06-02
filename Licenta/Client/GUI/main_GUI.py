@@ -22,7 +22,7 @@ participants = None
 
 def init_settings():
     global settings
-    with open("../Settings/ui_settings.json", "r") as settings_file:
+    with open("../../Settings/ui_settings.json", "r") as settings_file:
         settings = json.load(settings_file)
 
 
@@ -32,8 +32,6 @@ class MainGUI(QWidget):
         self.update_grid = QPushButton("Baga", self)
         self.video_labels = {}
         self.label_grid = QGridLayout(self)
-        self.test_button = QPushButton(self)
-        self.user_button = QPushButton(self)
         self.worker_threads = QThreadPool()
         self.window_title = settings["window_title"]
         self.window_width = settings["window_width"]

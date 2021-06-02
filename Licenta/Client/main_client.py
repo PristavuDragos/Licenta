@@ -1,10 +1,9 @@
 import json
 import random
-import threading
 import socket
 import audio_stream
 import video_stream
-import main_GUI
+from Client.GUI import main_GUI
 import client_connection_manager
 import feed_receiver
 
