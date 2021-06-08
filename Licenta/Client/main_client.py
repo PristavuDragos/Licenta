@@ -3,7 +3,7 @@ import random
 import socket
 import audio_stream
 import video_stream
-from Client.GUI import main_GUI
+from Client import main_GUI
 import client_connection_manager
 import feed_receiver
 

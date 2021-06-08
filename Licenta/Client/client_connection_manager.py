@@ -99,9 +99,11 @@ def connect_to_session(params, settings):
 
 def disconnect_from_session():
     global server_session_address
-    sender_socket = main_client.sender_socket
-    message = bytes("Disconnect" + "\\/" + str(main_client.client_id) + "\\/", "utf-8")
-    sender_socket.sendto(message, server_session_address)
+    global receive_packets
+    if receive_packets:
+        sender_socket = main_client.sender_socket
+        message = bytes("Disconnect" + "\\/" + str(main_client.client_id) + "\\/", "utf-8")
+        sender_socket.sendto(message, server_session_address)
 
 
 def keep_connection_alive():
