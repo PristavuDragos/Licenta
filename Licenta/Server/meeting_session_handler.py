@@ -25,7 +25,7 @@ class MeetingSession:
         client_id = str(params[0])
         if client_id not in self.participants:
             self.participants[client_id] = [(params[1], int(params[2])), (params[3], int(params[4])),
-                                            (params[5], int(params[6])), ["-1"]]
+                                            (params[5], int(params[6])), ["-1"], params[7]]
             self.send_participant_list()
 
     def disconnect_client(self, client_id):
@@ -34,10 +34,12 @@ class MeetingSession:
         self.send_participant_list()
 
     def send_participant_list(self):
-        participant_list = str(self.participants.keys())
+        participant_list = []
+        for key, value in self.participants.items():
+            participant_list.append([key, value[4]])
         for client_id, client_addresses in self.participants.items():
             address = client_addresses[2]
-            message = bytes("ParticipantsList" + "\\/" + participant_list + "\\/", "utf-8")
+            message = bytes("ParticipantsList" + "\\/" + str(participant_list) + "\\/", "utf-8")
             self.sender_socket.sendto(message, address)
 
     def send_keep_alive_packet(self, client_id):

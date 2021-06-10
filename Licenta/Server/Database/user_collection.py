@@ -14,7 +14,7 @@ def create_user(params):
     password = params[1]
     email = params[2]
     try:
-        if user_collection.count_documents({"username": username}) == 0:
+        if user_collection.count_documents({"email": email}) == 0:
             hash_password = hashlib.sha256(bytes(password, "utf-8"))
             user = {
                 "username": username,
@@ -30,15 +30,15 @@ def create_user(params):
 
 def check_credentials(params):
     global user_collection
-    username = params[0]
+    email = params[0]
     password = params[1]
     try:
         hash_password = hashlib.sha256(bytes(password, "utf-8"))
-        user = user_collection.find_one({"username": username, "password": hash_password.hexdigest()})
+        user = user_collection.find_one({"email": email, "password": hash_password.hexdigest()})
         if user is not None:
-            return user["_id"]
+            return [user["_id"], user["username"]]
         else:
-            return -1
+            return [-1]
     except Exception as err:
         print(str(err))
     return None
