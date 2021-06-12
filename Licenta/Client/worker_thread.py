@@ -1,5 +1,5 @@
 from PyQt5.QtCore import QRunnable
-from worker_signal import WorkerSignals
+from Client.worker_signal import WorkerSignals
 
 
 class Worker(QRunnable):

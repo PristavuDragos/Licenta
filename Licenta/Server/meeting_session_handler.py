@@ -25,7 +25,7 @@ class MeetingSession:
         client_id = str(params[0])
         if client_id not in self.participants:
             self.participants[client_id] = [(params[1], int(params[2])), (params[3], int(params[4])),
-                                            (params[5], int(params[6])), ["-1"]]
+                                            (params[5], int(params[6])), ["-1"], params[7]]
             self.send_participant_list()
 
     def disconnect_client(self, client_id):
@@ -34,10 +34,12 @@ class MeetingSession:
         self.send_participant_list()
 
     def send_participant_list(self):
-        participant_list = str(self.participants.keys())
+        participant_list = []
+        for key, value in self.participants.items():
+            participant_list.append([key, value[4]])
         for client_id, client_addresses in self.participants.items():
             address = client_addresses[2]
-            message = bytes("ParticipantsList" + "\\/" + participant_list + "\\/", "utf-8")
+            message = bytes("ParticipantsList" + "\\/" + str(participant_list) + "\\/", "utf-8")
             self.sender_socket.sendto(message, address)
 
     def send_keep_alive_packet(self, client_id):
@@ -64,7 +66,11 @@ class MeetingSession:
                     self.participants_keep_alive[payload[1]] = time.perf_counter()
                     self.send_keep_alive_packet(payload[1])
                 elif payload[0] == "RequireFeeds":
-                    pass
+                    index = int(payload[2])
+                    if index < 15:
+                        self.participants[payload[1]][3] = ["-1"]
+                    else:
+                        self.participants[payload[1]][3] = list(self.participants.keys())[index-15:index]
                 elif payload[0] == "Disconnect":
                     self.disconnect_client(payload[1])
             except Exception as err:
@@ -85,10 +91,10 @@ class MeetingSession:
         stream_handler.stop_audio_receiver()
         stream_handler.stop_video_receiver()
 
-    def start_session(self, settings):
-        self.session_active = True
-        self.session_thread.start()
-        return stream_handler.start_stream_handler(settings, self.session_socket.getsockname())
+    # def start_session(self, settings):
+    #     self.session_active = True
+    #     self.session_thread.start()
+    #     return stream_handler.start_stream_handler(settings, self.session_socket.getsockname())
 
     def start_session(self, session_id, settings):
         self.session_active = True

@@ -90,7 +90,7 @@ class StreamHandler:
                 try:
                     packet = self.video_packet_queue.get()
                     address = packet[1]
-                    header = packet[0][:23].decode().split("\/")
+                    header = packet[0][:41].decode().split("\/")
                     timestamp = float(header[0])
                     packet_number = int(header[1])
                     client_id = (header[2], address[0], address[1])
@@ -99,12 +99,12 @@ class StreamHandler:
                         frame_data = self.video_data_frames[client_id]
                         if packet_number == 1 and timestamp > frame_data[1]:
                             payload = b""
-                            payload += packet[0][23:]
+                            payload += packet[0][41:]
                             self.video_data_frames[client_id] = [payload, timestamp, packet_number]
                             if packet_number == packets_per_frame_:
                                 self.send_video_to_participants(self.video_data_frames.pop(client_id), header[2])
                         elif packet_number == frame_data[2] + 1 and timestamp == frame_data[1]:
-                            frame_data[0] += packet[0][23:]
+                            frame_data[0] += packet[0][41:]
                             frame_data[2] = packet_number
                             if packet_number == packets_per_frame_:
                                 self.send_video_to_participants(frame_data, header[2])
@@ -116,7 +116,7 @@ class StreamHandler:
                     else:
                         if packet_number == 1:
                             payload = b""
-                            payload += packet[0][23:]
+                            payload += packet[0][41:]
                             self.video_data_frames[client_id] = [payload, timestamp, packet_number]
                             if packet_number == packets_per_frame_:
                                 self.send_video_to_participants(self.video_data_frames.pop(client_id), header[2])

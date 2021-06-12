@@ -2,6 +2,9 @@ import json
 import meeting_session_handler
 import threading
 import socket
+from Server.Database import user_collection, meeting_session_collection
+from Server.Database import db_connection
+import Server.Database.meeting_session_collection as msc
 
 settings = None
 keep_server_up = None
@@ -18,6 +21,7 @@ def init_settings():
 
 
 def run_server():
+    db_connection.init()
     print(main_server_socket.getsockname())
     while keep_server_up:
         try:
@@ -28,6 +32,10 @@ def run_server():
                 create_request(payload)
             elif payload[0] == "ConnectToSession":
                 connect_request(payload)
+            elif payload[0] == "Register":
+                register_request(payload)
+            elif payload[0] == "Login":
+                login_request(payload)
         except:
             pass
 
@@ -35,9 +43,14 @@ def run_server():
 def create_request(payload):
     try:
         address = (payload[2], int(payload[3]))
-        session_id = "0"
-        start_meeting_session(session_id, [payload[1], payload[2], payload[3]])
-        message = bytes("Request Accepted" + "\\/", "utf-8")
+        print(payload[4], payload[5], payload[1], payload[6], payload[7])
+        session_id = msc.create_session([payload[4], payload[5], payload[1], payload[6], payload[7]])
+        message = None
+        if session_id is not None:
+            start_meeting_session(session_id, [payload[1], payload[2], payload[3]])
+            message = bytes("CreateSession" + "\\/" + "1" + "\\/" + session_id, "utf-8")
+        else:
+            message = bytes("CreateSession" + "\\/" + "0" + "\\/", "utf-8")
         server_sender_socket.sendto(message, address)
     except BaseException as err:
         server_sender_socket.sendto(bytes(err), address)
@@ -45,18 +58,42 @@ def create_request(payload):
 
 def connect_request(payload):
     address = (payload[2], int(payload[3]))
-    session_id = payload[4]
-    if session_id in existing_sessions_addresses:
-        existing_sessions.get(session_id).connect_client([payload[1], payload[5], payload[6], payload[7],
-                                                          payload[8], payload[2], payload[3]])
-        session_addresses = existing_sessions_addresses[session_id]
-        message = bytes("Connection Accepted" + "\\/" + str(session_addresses[0][0]) + "\\/"
+    session_code = payload[4]
+    password = payload[9]
+    validation = meeting_session_collection.validate_connection([session_code, password])
+    if validation and session_code in existing_sessions_addresses:
+        session_addresses = existing_sessions_addresses[session_code]
+        message = bytes("ConnectToSession" + "\\/" + str(session_addresses[0][0]) + "\\/"
                         + str(session_addresses[0][1]) + "\\/" + str(session_addresses[1][0])
                         + "\\/" + str(session_addresses[1][1]) + "\\/" + str(session_addresses[2][0])
                         + "\\/" + str(session_addresses[2][1]) + "\\/", "utf-8")
         server_sender_socket.sendto(message, address)
+        existing_sessions.get(session_code).connect_client([payload[1], payload[5], payload[6], payload[7],
+                                                            payload[8], payload[2], payload[3], payload[10]])
     else:
-        server_sender_socket.sendto(bytes("Invalid meeting", "utf-8"), address)
+        server_sender_socket.sendto(bytes("InvalidSession", "utf-8"), address)
+
+
+def register_request(payload):
+    address = (payload[1], int(payload[2]))
+    result = user_collection.create_user([payload[4], payload[5], payload[3]])
+    status = "0"
+    if result is not None:
+        status = "1"
+    message = bytes("Register" + "\\/" + status + "\\/", "utf-8")
+    server_sender_socket.sendto(message, address)
+
+
+def login_request(payload):
+    address = (payload[1], int(payload[2]))
+    result = user_collection.check_credentials([payload[3], payload[4]])
+    status = "2"
+    if result is None:
+        status = "0"
+    elif result[0] == -1:
+        status = "1"
+    message = bytes("Login" + "\\/" + status + "\\/" + str(result[0]) + "\\/" + str(result[1]) + "\\/", "utf-8")
+    server_sender_socket.sendto(message, address)
 
 
 def server_stopping():

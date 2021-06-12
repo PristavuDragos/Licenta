@@ -1,5 +1,7 @@
 {
-  "window_height": 768,
+  "window_height": 700,
   "window_width": 1024,
-  "window_title": "PRO-test"
+  "window_title": "PRO-test",
+  "min_window_width": 900,
+  "min_window_height": 600
 }
