@@ -7,8 +7,9 @@ from Client import client_connection_manager
 
 
 class CreateSessionPopup(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, signals, parent=None):
         super(CreateSessionPopup, self).__init__(parent)
+        self.signals = signals
         self.setWindowTitle("Create New Session")
         self.setGeometry(400, 150, 400, 500)
         self.setFixedSize(400, 500)
@@ -74,7 +75,10 @@ class CreateSessionPopup(QDialog):
         duration = self.duration_edit.text()
         upload_time = self.upload_time_edit.text()
         result = client_connection_manager.initiate_session([session_name, password, duration, upload_time])
-        self.warning_label.setText(result)
-        if result == "Logged in successfully!":
-            self.parent().login_update_ui(True)
-            self.buttonBox.button(QDialogButtonBox.Ok).hide()
+        self.warning_label.setText(result[0])
+        if result[0] == "Session created.":
+            conn_result = client_connection_manager.connect_to_session([result[1], password])
+            if conn_result[0] == "Connected.":
+                self.accept()
+                self.signals.start_packet_receiver.emit(conn_result[1])
+                self.signals.switch_page.emit([conn_result[2], conn_result[3]])

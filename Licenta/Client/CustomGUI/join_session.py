@@ -6,8 +6,9 @@ from Client import client_connection_manager
 
 
 class JoinSessionPopup(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, signals, parent=None):
         super(JoinSessionPopup, self).__init__(parent)
+        self.signals = signals
         self.setWindowTitle("Join Session")
         self.setGeometry(400, 150, 400, 300)
         self.setFixedSize(400, 300)
@@ -55,7 +56,8 @@ class JoinSessionPopup(QDialog):
             self.warning_label.setText("")
         password = self.password_edit.text()
         result = client_connection_manager.connect_to_session([session_code, password])
-        self.warning_label.setText(result)
-        if result == "Connected.":
-            self.buttonBox.button(QDialogButtonBox.Ok).hide()
-            self.par.start_packet_receiver()
+        self.warning_label.setText(result[0])
+        if result[0] == "Connected.":
+            self.accept()
+            self.signals.start_packet_receiver.emit(result[1])
+            self.signals.switch_page.emit([result[2], result[3]])

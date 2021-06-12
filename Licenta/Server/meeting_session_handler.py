@@ -66,7 +66,11 @@ class MeetingSession:
                     self.participants_keep_alive[payload[1]] = time.perf_counter()
                     self.send_keep_alive_packet(payload[1])
                 elif payload[0] == "RequireFeeds":
-                    pass
+                    index = int(payload[2])
+                    if index < 15:
+                        self.participants[payload[1]][3] = ["-1"]
+                    else:
+                        self.participants[payload[1]][3] = list(self.participants.keys())[index-15:index]
                 elif payload[0] == "Disconnect":
                     self.disconnect_client(payload[1])
             except Exception as err:
@@ -87,10 +91,10 @@ class MeetingSession:
         stream_handler.stop_audio_receiver()
         stream_handler.stop_video_receiver()
 
-    def start_session(self, settings):
-        self.session_active = True
-        self.session_thread.start()
-        return stream_handler.start_stream_handler(settings, self.session_socket.getsockname())
+    # def start_session(self, settings):
+    #     self.session_active = True
+    #     self.session_thread.start()
+    #     return stream_handler.start_stream_handler(settings, self.session_socket.getsockname())
 
     def start_session(self, session_id, settings):
         self.session_active = True

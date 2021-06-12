@@ -1,1 +1,6 @@
-{"logged_in": 0, "client_id": "-1", "username": ""}
+{"logged_in": 1,
+  "client_id": "60c3bddcd8f57ae515b7a892",
+  "username": "Nume User",
+  "video_start_on_enter": 0,
+  "audio_start_on_enter": 0
+}

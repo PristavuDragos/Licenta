@@ -10,12 +10,13 @@ server_session_address = None
 response_status = None
 
 
-def packet_receiver(**signals):
+def packet_receiver(*args, **signals):
     global received_response
     global connection_timeout
     global receive_packets
     global server_session_address
     global response_status
+    server_session_address = args[0]
     receive_packets = True
     connection_timeout = time.perf_counter()
     socket = main_client.main_client_socket
@@ -28,16 +29,14 @@ def packet_receiver(**signals):
                 keep_connection_alive()
             packet = socket.recvfrom(main_client.settings["UDP_packet_size"])
             payload = packet[0].decode().split("\/")
-            if payload[0] != "KeepAlive":
-                print(payload)
-            if payload[0] == "Request Accepted":
-                received_response = True
-            elif payload[0] == "Connection Accepted":
-                received_response = True
-                main_client.set_addresses([(payload[1], int(payload[2])), (payload[3], int(payload[4]))])
-                server_session_address = (payload[5], int(payload[6]))
-                signals["connected"].emit()
-            elif payload[0] == "ParticipantsList":
+            # if payload[0] == "Request Accepted":
+            #     received_response = True
+            # elif payload[0] == "Connection Accepted":
+            #     received_response = True
+            #     main_client.set_addresses([(payload[1], int(payload[2])), (payload[3], int(payload[4]))])
+            #     server_session_address = (payload[5], int(payload[6]))
+            #     signals["connected"].emit()
+            if payload[0] == "ParticipantsList":
                 main_client.set_participant_list(payload[1])
                 signals["update_callback"].emit(main_client.participant_list)
                 connection_timeout = time.perf_counter()
@@ -79,19 +78,18 @@ def initiate_session(params):
         try:
             packet = receiver_socket.recvfrom(main_client.settings["UDP_packet_size"])
             payload = packet[0].decode().split("\/")
-            print(payload)
             if payload[0] == "CreateSession":
                 received_response = True
                 response_status = int(payload[1])
         except:
             pass
-    if attempt_count == 2:
-        return "Server did not respond."
+    if attempt_count == 2 and response_status == -1:
+        return ["Server did not respond."]
     elif response_status == 0:
-        return "Creation failed."
+        return ["Creation failed."]
     else:
         session_code = payload[2]
-        return "Session created.\n Code: " + str(session_code)
+        return ["Session created.", session_code]
 
 
 def connect_to_session(params):
@@ -99,6 +97,7 @@ def connect_to_session(params):
     global connection_timeout
     global response_status
     global server_session_address
+    server_session_address = ()
     main_client.settings
     video_sock, audio_sock = feed_receiver.start_feed_receiver(main_client.settings)
     receiver_socket = main_client.main_client_socket
@@ -120,29 +119,30 @@ def connect_to_session(params):
         try:
             packet = receiver_socket.recvfrom(main_client.settings["UDP_packet_size"])
             payload = packet[0].decode().split("\/")
-            print(payload)
             if payload[0] == "ConnectToSession":
                 received_response = True
                 main_client.set_addresses([(payload[1], int(payload[2])), (payload[3], int(payload[4]))])
+                server_video_address = (payload[1], int(payload[2]))
+                server_audio_address = (payload[3], int(payload[4]))
                 server_session_address = (payload[5], int(payload[6]))
                 response_status = 1
             elif payload[0] == "InvalidSession":
                 response_status = 0
                 received_response = True
-        except:
+        except Exception as err:
+            print(str(err))
             pass
-    if attempt_count == 2:
+    if attempt_count == 2 and response_status == -1:
         feed_receiver.stop_audio_receiver()
         feed_receiver.stop_video_receiver()
-        return "Server did not respond."
+        return ["Server did not respond."]
     elif response_status == 0:
         feed_receiver.stop_audio_receiver()
         feed_receiver.stop_video_receiver()
-        return "Invalid session credentials."
+        return ["Invalid session credentials."]
     else:
         connection_timeout = time.perf_counter()
-        main_client.start_stream()
-        return "Connected."
+        return ["Connected.", server_session_address, server_video_address, server_audio_address]
 
 
 def disconnect_from_session():
@@ -161,10 +161,10 @@ def keep_connection_alive():
     sender_socket.sendto(message, server_session_address)
 
 
-def require_feeds(client_ids):
+def require_feeds(list_index):
     sender_socket = main_client.sender_socket
-    message = bytes("RequireFeeds" + "\\/" + str(main_client.client_id) + "\\/", "utf-8")
-    sender_socket.sendto(message, (main_client.settings["server_IP"], main_client.settings["server_PORT"]))
+    message = bytes("RequireFeeds" + "\\/" + str(main_client.client_id) + "\\/" + str(list_index), "utf-8")
+    sender_socket.sendto(message, server_session_address)
 
 
 def stop_packet_receiver():

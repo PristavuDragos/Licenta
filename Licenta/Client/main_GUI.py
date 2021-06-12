@@ -6,11 +6,11 @@ from PyQt5.QtGui import QIcon
 import client_connection_manager
 import main_client
 from PyQt5 import QtGui
-from PyQt5.QtCore import QThreadPool
+from PyQt5.QtCore import QThreadPool, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QStackedWidget
 from qt_material import apply_stylesheet
 import feed_receiver
-from Client.CustomGUI import session_page
+from Client.CustomGUI import session_page, gui_signals
 from worker_thread import Worker
 from CustomGUI import main_page
 
@@ -39,6 +39,9 @@ class MainGUI(QMainWindow):
         self.right_arrow_icon = QIcon("../Assets/Images/right_arrow.png")
         self.setStyleSheet('QLabel { color: #BAC0F0; font-family: Courier; font-style: bold; font-size: 12px}'
                            'QPushButton {background-color: #0C2237}')
+        self.sig = gui_signals.GUISignals()
+        self.sig.switch_page.connect(self.switch_to_session_screen)
+        self.sig.start_packet_receiver.connect(self.start_packet_receiver)
         self.window_title = settings["window_title"]
         self.window_width = settings["window_width"]
         self.window_height = settings["window_height"]
@@ -47,11 +50,10 @@ class MainGUI(QMainWindow):
         self.resize(self.window_width, self.window_height)
         self.central_widget = QStackedWidget()
         self.setCentralWidget(self.central_widget)
-        self.main_page_widget = main_page.MainPageWidget(main_client.client_settings, self)
+        self.main_page_widget = main_page.MainPageWidget(main_client.client_settings, self.sig, self)
         self.central_widget.addWidget(self.main_page_widget)
-        self.session_page_widget = session_page.SessionPageWidget(self)
+        self.session_page_widget = session_page.SessionPageWidget(main_client.client_settings, self)
         self.central_widget.addWidget(self.session_page_widget)
-        self.switch_to_session_screen()
         self.participants = []
         # self.video_labels = {}
         # self.label_grid = QGridLayout(self)
@@ -62,7 +64,7 @@ class MainGUI(QMainWindow):
 
     def set_participant_list(self, participant_list):
         self.participants = participant_list
-        self.update_grid.clicked.emit()
+        self.session_page_widget.set_participant_list(participant_list)
 
     def set_grid(self):
         counter = 0
@@ -85,14 +87,15 @@ class MainGUI(QMainWindow):
             if widget is not None:
                 widget.setParent(None)
 
-    def switch_to_session_screen(self):
+    def switch_to_session_screen(self, addresses):
+        self.session_page_widget.init_streams(main_client.settings, addresses)
         self.central_widget.setCurrentWidget(self.session_page_widget)
 
     def switch_to_home_page(self):
         self.central_widget.setCurrentWidget(self.main_page_widget)
 
-    def start_packet_receiver(self):
-        worker = Worker(client_connection_manager.packet_receiver)
+    def start_packet_receiver(self, address):
+        worker = Worker(client_connection_manager.packet_receiver, address)
         worker.signals.update.connect(self.set_participant_list)
         self.start_video_packet_processor()
         self.worker_threads.start(worker)
@@ -115,6 +118,11 @@ class MainGUI(QMainWindow):
         main_client.connect_to_server("0")
 
     def closeEvent(self, event):
+        self.session_page_widget.stop_streams()
+        main_client.close()
+
+    def exit_session(self):
+        self.session_page_widget.stop_streams()
         main_client.close()
 
     def init_ui(self):

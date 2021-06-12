@@ -62,14 +62,14 @@ def connect_request(payload):
     password = payload[9]
     validation = meeting_session_collection.validate_connection([session_code, password])
     if validation and session_code in existing_sessions_addresses:
-        existing_sessions.get(session_code).connect_client([payload[1], payload[5], payload[6], payload[7],
-                                                            payload[8], payload[2], payload[3], payload[10]])
         session_addresses = existing_sessions_addresses[session_code]
         message = bytes("ConnectToSession" + "\\/" + str(session_addresses[0][0]) + "\\/"
                         + str(session_addresses[0][1]) + "\\/" + str(session_addresses[1][0])
                         + "\\/" + str(session_addresses[1][1]) + "\\/" + str(session_addresses[2][0])
                         + "\\/" + str(session_addresses[2][1]) + "\\/", "utf-8")
         server_sender_socket.sendto(message, address)
+        existing_sessions.get(session_code).connect_client([payload[1], payload[5], payload[6], payload[7],
+                                                            payload[8], payload[2], payload[3], payload[10]])
     else:
         server_sender_socket.sendto(bytes("InvalidSession", "utf-8"), address)
 

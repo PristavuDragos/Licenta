@@ -50,7 +50,6 @@ def set_participant_list(string_list):
     global participant_list
     global main_window
     participant_list = []
-    print(string_list)
     string_list = string_list.split("\'")
     iterator = 0
     while iterator < len(string_list):
@@ -103,11 +102,11 @@ def start_client():
     main_GUI.start_ui()
 
 
-def start_stream():
-    video_stream.init(settings, server_stream_addresses[0])
-    video_stream.start_video_feed_test()
-    audio_stream.init(settings, server_stream_addresses[1])
-    audio_stream.start_audio_feed()
+# def init_stream():
+#     video_stream.init(settings, server_stream_addresses[0])
+#     video_stream.start_video_feed()
+#     audio_stream.init(settings, server_stream_addresses[1])
+#     audio_stream.start_audio_feed()
 
 
 # def connect_to_server(session_id):
@@ -129,15 +128,10 @@ def start_stream():
 
 def close():
     client_connection_manager.disconnect_from_session()
-    video_stream.stop_video_feed()
-    audio_stream.stop_audio_feed()
     feed_receiver.stop_audio_receiver()
     feed_receiver.stop_video_receiver()
+    client_connection_manager.stop_packet_receiver()
 
 
 if __name__ == '__main__':
-    list = []
-    for it in range(3):
-        list.append(["dada", str(it)])
-    print(str(list))
     start_client()

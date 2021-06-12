@@ -10,14 +10,15 @@ from Client.CustomGUI.login import LoginPopup
 
 
 class MainPageWidget(QWidget):
-    def __init__(self, settings, parent=None):
+    def __init__(self, settings, signals, parent=None):
         super(MainPageWidget, self).__init__(parent)
+        self.par = parent
+        self.signals = signals
         button_grid = QGridLayout()
         layout = QVBoxLayout(self)
         width = parent.width()
         height = parent.height()
         button_size = QSize(width / 5, height / 10)
-
 
         self.test = QPushButton("Test", self)
         self.test.clicked.connect(parent.switch_to_session_screen)
@@ -90,11 +91,11 @@ class MainPageWidget(QWidget):
         register.show()
 
     def create_session(self):
-        create_session = CreateSessionPopup(self)
+        create_session = CreateSessionPopup(self.signals, self)
         create_session.show()
 
     def join_session(self):
-        join_session = JoinSessionPopup(self)
+        join_session = JoinSessionPopup(self.signals, self)
         join_session.show()
 
     def settings(self):
