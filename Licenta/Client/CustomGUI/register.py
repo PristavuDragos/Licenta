@@ -60,13 +60,13 @@ class RegisterPopup(QDialog):
 
         layout.setSpacing(20)
         self.formGroupBox.setLayout(layout)
-        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        self.buttonBox.accepted.connect(self.verify_input)
-        self.buttonBox.rejected.connect(self.reject)
-        mainLayout = QVBoxLayout()
-        mainLayout.addWidget(self.formGroupBox)
-        mainLayout.addWidget(self.buttonBox)
-        self.setLayout(mainLayout)
+        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.button_box.accepted.connect(self.verify_input)
+        self.button_box.rejected.connect(self.reject)
+        main_layout = QVBoxLayout()
+        main_layout.addWidget(self.formGroupBox)
+        main_layout.addWidget(self.button_box)
+        self.setLayout(main_layout)
 
         self.setWindowModality(Qt.ApplicationModal)
 
@@ -140,4 +140,4 @@ class RegisterPopup(QDialog):
             [self.email_edit.text(), self.username_edit.text(), self.password_edit.text()])
         self.warning_label.setText(result)
         if result == "Account created!":
-            self.buttonBox.button(QDialogButtonBox.Ok).hide()
+            self.button_box.button(QDialogButtonBox.Ok).hide()

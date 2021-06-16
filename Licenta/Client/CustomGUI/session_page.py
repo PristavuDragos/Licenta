@@ -1,31 +1,46 @@
 import math
+import time
+
 from Client import client_connection_manager, audio_stream, video_stream
 from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QIcon, QPixmap, QColor
-from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QGridLayout, QVBoxLayout, QHBoxLayout
+from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QGridLayout, QVBoxLayout, QHBoxLayout, QFileDialog
 
+from Client.CustomGUI import confirmation_dialog
+from Client.CustomGUI.participant_list_page import ParticipantListPopup
 from Client import main_client
 from Client.CustomGUI.create_session import CreateSessionPopup
 from Client.CustomGUI.settings_menu import SettingsMenuPopup
 from Client.CustomGUI.join_session import JoinSessionPopup
 from Client.CustomGUI.register import RegisterPopup
 from Client.CustomGUI.login import LoginPopup
+from Client.worker_thread import Worker
 
 
 class SessionPageWidget(QWidget):
     def __init__(self, settings, parent=None):
         super(SessionPageWidget, self).__init__(parent)
+        self.session_code = ""
+        self.owner = "-1"
+        self.client_id = "-1"
         self.par = parent
         self.settings = settings
         self.width = parent.width()
         self.height = parent.height()
         self.muted = True
         self.video_on = False
+        self.keep_timer_on = False
+        self.test_timer = -1
+        self.elapsed_test_time = 0
+        self.test_duration = 0
+        self.test_upload_time = 0
         self.counter = 0
         self.view_page = 1
         self.max_pages = 1
         self.participant_indexing = 15
         self.participants_list = []
+        self.list_dialog_active = False
+        self.list_dialog = ParticipantListPopup(self)
         main_layout = QVBoxLayout(self)
         self.muted_icon = parent.muted_icon
         self.unmuted_icon = parent.unmuted_icon
@@ -47,6 +62,28 @@ class SessionPageWidget(QWidget):
         self.control_container.setLayout(self.control_layout)
         self.control_container.setStyleSheet('background-color: #202238;')
 
+        self.session_code_label = QLabel("Session code:\n ASD")
+        self.session_code_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.time_label = QLabel()
+        self.time_label.hide()
+        self.participant_list_button = QPushButton("Participants")
+        self.participant_list_button.clicked.connect(self.show_participants)
+        # self.participant_list_button.hide()
+        self.download_solutions = QPushButton("Download Solutions")
+        self.download_solutions.clicked.connect(self.download_solution_files)
+        self.upload_subject = QPushButton("Upload test")
+        self.upload_subject.clicked.connect(self.upload_subject_file)
+        self.upload_solution = QPushButton("Upload solution")
+        self.upload_solution.clicked.connect(self.upload_solution_file)
+        self.download_subject = QPushButton("Download Test")
+        self.download_subject.clicked.connect(self.download_subject_file)
+        self.start_test_button = QPushButton("Start Test")
+        self.start_test_button.clicked.connect(self.start_test)
+        # self.start_button.hide()
+        self.close_meeting_button = QPushButton("Close Session")
+        self.close_meeting_button.clicked.connect(self.close_meeting)
+        # self.close_meeting_button.hide()
+
         self.page_left = QPushButton()
         self.page_left.setIcon(self.left_arrow_icon)
         self.page_left.setFixedSize(50, 50)
@@ -65,11 +102,14 @@ class SessionPageWidget(QWidget):
         self.page_right.setDisabled(True)
         self.page_right.clicked.connect(self.next_page)
 
+        self.top_layout.addWidget(self.session_code_label)
+        self.top_layout.addWidget(self.time_label)
         self.top_layout.addStretch()
         self.top_layout.addWidget(self.page_left)
         self.top_layout.addWidget(self.page_label)
         self.top_layout.addWidget(self.page_right)
         self.top_layout.addStretch()
+        self.top_layout.addWidget(self.participant_list_button)
 
         self.quit = QPushButton("Leave")
         self.quit.setFixedSize(100, 50)
@@ -101,7 +141,13 @@ class SessionPageWidget(QWidget):
         self.control_layout.addStretch()
         self.control_layout.addWidget(self.test_btn)
         self.control_layout.setAlignment(self.test_btn, Qt.AlignCenter)
+        self.control_layout.addWidget(self.download_solutions)
+        self.control_layout.addWidget(self.upload_subject)
+        self.control_layout.addWidget(self.upload_solution)
+        self.control_layout.addWidget(self.download_subject)
+        self.control_layout.addWidget(self.start_test_button)
         self.control_layout.addStretch()
+        self.control_layout.addWidget(self.close_meeting_button)
         self.control_layout.addWidget(self.quit)
         self.control_layout.setAlignment(self.quit, Qt.AlignRight)
         self.control_layout.setAlignment(Qt.AlignCenter)
@@ -116,6 +162,36 @@ class SessionPageWidget(QWidget):
         self.setLayout(main_layout)
         self.test_list = []
 
+    def set_owner_buttons(self, show):
+        if not show:
+            self.session_code_label.hide()
+            self.participant_list_button.hide()
+            self.close_meeting_button.hide()
+            self.start_test_button.hide()
+            self.upload_subject.hide()
+            self.download_solutions.hide()
+            self.upload_solution.show()
+            self.download_subject.show()
+        else:
+            self.session_code_label.show()
+            self.participant_list_button.show()
+            self.close_meeting_button.show()
+            self.start_test_button.show()
+            self.upload_subject.show()
+            self.download_solutions.show()
+            self.upload_solution.hide()
+            self.download_subject.hide()
+
+    def set_session_data(self, owner, client_id, session_code):
+        self.owner = owner
+        self.client_id = client_id
+        self.session_code = session_code
+        if owner == client_id:
+            self.session_code_label.setText(str("Session code:\n" + session_code))
+            self.set_owner_buttons(True)
+        else:
+            self.set_owner_buttons(False)
+
     def init_streams(self, settings, addresses):
         video_stream.init(settings, addresses[0])
         audio_stream.init(settings, addresses[1])
@@ -128,7 +204,68 @@ class SessionPageWidget(QWidget):
         video_stream.stop_video_feed()
         audio_stream.stop_audio_feed()
 
+    def timer_update(self, params):
+        self.elapsed_test_time += 1
+        if self.elapsed_test_time < self.test_duration:
+            self.time_label.setText("Time left:" + str(self.test_duration - self.elapsed_test_time)
+                                    + "mins\nTime for upload:" + str(self.test_upload_time) + "mins")
+        elif self.elapsed_test_time >= self.test_duration and self.elapsed_test_time - self.test_duration < self.test_upload_time:
+            self.time_label.setText("Time left: 0mins\nTime for upload:" +
+                                    str(self.test_upload_time + self.test_duration - self.elapsed_test_time) + "mins")
+        elif self.elapsed_test_time >= self.test_duration + self.test_upload_time:
+            self.time_label.setText("Time is up!")
+            self.upload_solution.setDisabled(True)
+
+    def start_timers(self, params):
+        self.keep_timer_on = True
+        self.test_timer = time.perf_counter()
+        self.elapsed_test_time = params[0]
+        self.test_duration = params[1]
+        self.test_upload_time = params[2]
+        self.time_label.show()
+        if self.elapsed_test_time < self.test_duration:
+            self.time_label.setText("Time left:" + str(self.test_duration - self.elapsed_test_time)
+                                    + "mins\nTime for upload:" + str(self.test_upload_time) + "mins")
+        elif self.elapsed_test_time >= self.test_duration and self.elapsed_test_time - self.test_duration < self.test_upload_time:
+            self.time_label.setText("Time left: 0mins\nTime for upload:" +
+                                    str(self.test_upload_time + self.test_duration - self.elapsed_test_time) + "mins")
+        elif self.elapsed_test_time >= self.test_duration + self.test_upload_time:
+            self.time_label.setText("Time is up!")
+            self.upload_solution.setDisabled(True)
+
+    def session_time_keeper(self, *args, **signals):
+        timer = time.perf_counter()
+        while self.keep_timer_on:
+            new_time = time.perf_counter()
+            if time.perf_counter() - timer > 60:
+                timer = new_time
+                signals["update_callback"].emit([])
+
+    def stop_timer(self):
+        self.keep_timer_on = False
+
+    def upload_subject_file(self):
+        filename = QFileDialog.getOpenFileName(self, 'Open file',
+                                               'c:\\', "Document (*.pdf)")
+        client_connection_manager.upload_file([filename[0], self.session_code, 0])
+
+    def upload_solution_file(self):
+        self.settings = self.par.update_settings()
+        filename = QFileDialog.getOpenFileName(self, 'Open file',
+                                               'c:\\', "Document (*.pdf)")
+        client_connection_manager.upload_file([filename[0], self.session_code, 1, self.settings["username"]])
+
+    def download_subject_file(self):
+        filename = QFileDialog.getSaveFileName(self, 'Save file',
+                                               'c:\\', "Document (*.pdf)")
+        client_connection_manager.download_subject([self.session_code, filename[0]])
+
+    def download_solution_files(self):
+        directory = QFileDialog.getExistingDirectory(self, "Select Directory")
+        client_connection_manager.download_solutions([self.session_code, directory])
+
     def exit(self):
+        self.set_owner_buttons(False)
         self.par.exit_session()
         self.par.switch_to_home_page()
 
@@ -148,6 +285,8 @@ class SessionPageWidget(QWidget):
         client_connection_manager.require_feeds(self.participant_indexing)
         self.page_label.setText("Page: " + str(self.view_page) + "/" + str(self.max_pages))
         self.set_grid()
+        if self.list_dialog_active:
+            self.list_dialog.set_labels(participants)
 
     def previous_page(self):
         if self.view_page > 1:
@@ -248,6 +387,23 @@ class SessionPageWidget(QWidget):
             self.view_layout.addWidget(label, counter_ // columns, counter_ % columns)
             self.view_layout.setAlignment(label, Qt.AlignCenter)
             counter_ += 1
+
+    def start_test(self):
+        client_connection_manager.start_test()
+
+    def close_meeting(self):
+        confirm = confirmation_dialog.ConfirmationPopup("End Session", "Close this session?",
+                                                        client_connection_manager.close_session, self)
+        confirm.show()
+
+    def show_participants(self):
+        self.list_dialog_active = True
+        self.list_dialog.show()
+        self.list_dialog.set_labels(self.participants_list)
+
+    def close_dialog(self):
+        self.list_dialog_active = False
+        self.list_dialog.hide()
 
     def get_grid_shape(self):
         counter = len(self.participants_list)

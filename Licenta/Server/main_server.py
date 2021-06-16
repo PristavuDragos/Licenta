@@ -4,11 +4,13 @@ import threading
 import socket
 from Server.Database import user_collection, meeting_session_collection
 from Server.Database import db_connection
+from Server.file_serving_thread import FileServerThread
 import Server.Database.meeting_session_collection as msc
 
 settings = None
 keep_server_up = None
 main_server_socket = None
+tcp_file_socket = None
 server_sender_socket = None
 existing_sessions_addresses = None
 existing_sessions = None
@@ -27,11 +29,12 @@ def run_server():
         try:
             packet = main_server_socket.recvfrom(settings["UDP_packet_size"])
             payload = packet[0].decode().split("\/")
-            print(payload)
             if payload[0] == "CreateSession":
                 create_request(payload)
             elif payload[0] == "ConnectToSession":
                 connect_request(payload)
+            elif payload[0] == "CloseSession":
+                close_request(payload)
             elif payload[0] == "Register":
                 register_request(payload)
             elif payload[0] == "Login":
@@ -40,14 +43,26 @@ def run_server():
             pass
 
 
+def file_manager():
+    global tcp_file_socket
+    threads = []
+    while keep_server_up:
+        tcp_file_socket.listen(10)
+        (conn, (ip, port)) = tcp_file_socket.accept()
+        handler = FileServerThread(ip, port, conn)
+        handler.start()
+        threads.append(handler)
+    for t in threads:
+        t.join()
+
+
 def create_request(payload):
     try:
         address = (payload[2], int(payload[3]))
-        print(payload[4], payload[5], payload[1], payload[6], payload[7])
         session_id = msc.create_session([payload[4], payload[5], payload[1], payload[6], payload[7]])
         message = None
         if session_id is not None:
-            start_meeting_session(session_id, [payload[1], payload[2], payload[3]])
+            start_meeting_session(session_id, [payload[1], payload[2], payload[3]], [payload[6], payload[7]])
             message = bytes("CreateSession" + "\\/" + "1" + "\\/" + session_id, "utf-8")
         else:
             message = bytes("CreateSession" + "\\/" + "0" + "\\/", "utf-8")
@@ -61,17 +76,28 @@ def connect_request(payload):
     session_code = payload[4]
     password = payload[9]
     validation = meeting_session_collection.validate_connection([session_code, password])
-    if validation and session_code in existing_sessions_addresses:
+    if validation[0] and session_code in existing_sessions_addresses:
         session_addresses = existing_sessions_addresses[session_code]
         message = bytes("ConnectToSession" + "\\/" + str(session_addresses[0][0]) + "\\/"
                         + str(session_addresses[0][1]) + "\\/" + str(session_addresses[1][0])
                         + "\\/" + str(session_addresses[1][1]) + "\\/" + str(session_addresses[2][0])
-                        + "\\/" + str(session_addresses[2][1]) + "\\/", "utf-8")
+                        + "\\/" + str(session_addresses[2][1]) + "\\/" + str(validation[1]), "utf-8")
         server_sender_socket.sendto(message, address)
         existing_sessions.get(session_code).connect_client([payload[1], payload[5], payload[6], payload[7],
                                                             payload[8], payload[2], payload[3], payload[10]])
     else:
         server_sender_socket.sendto(bytes("InvalidSession", "utf-8"), address)
+
+
+def close_request(payload):
+    session_code = payload[3]
+    client_id = payload[4]
+    if session_code in existing_sessions:
+        session = existing_sessions.get(session_code)
+        if session.owner[0] == client_id:
+            session.send_disconnect_message()
+            existing_sessions.pop(session_code)
+            existing_sessions_addresses.pop(session_code)
 
 
 def register_request(payload):
@@ -107,11 +133,11 @@ def server_stopping():
                 existing_sessions.pop(session_id).close_session()
 
 
-def start_meeting_session(session_id, owner):
+def start_meeting_session(session_id, owner, times):
     global existing_sessions_addresses
     global existing_sessions
     if session_id not in existing_sessions_addresses:
-        session = meeting_session_handler.MeetingSession(owner, session_id, settings)
+        session = meeting_session_handler.MeetingSession(owner, session_id, times, settings)
         existing_sessions[session_id] = session
         existing_sessions_addresses[session_id] = session.start_session(session_id, settings)
 
@@ -122,12 +148,16 @@ def start_server():
     global server_sender_socket
     global existing_sessions_addresses
     global existing_sessions
+    global tcp_file_socket
     init_settings()
     try:
         main_server_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
         main_server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         main_server_socket.bind((settings["server_IP"], settings["server_PORT"]))
         main_server_socket.settimeout(5)
+        tcp_file_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
+        tcp_file_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        tcp_file_socket.bind((settings["server_IP"], settings["server_TCP_PORT"]))
         server_sender_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
     except BaseException as err:
         print("An error occurred while starting the server: " + str(err))
@@ -138,6 +168,8 @@ def start_server():
     keep_server_up = True
     stopper_thread = threading.Thread(target=server_stopping)
     stopper_thread.start()
+    file_thread = threading.Thread(target=file_manager)
+    file_thread.start()
     run_server()
 
 

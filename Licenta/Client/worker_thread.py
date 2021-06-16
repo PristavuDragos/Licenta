@@ -14,6 +14,8 @@ class Worker(QRunnable):
         self.kwargs['update_callback'] = self.signals.update
         self.kwargs['send_data'] = self.signals.send_data
         self.kwargs['connected'] = self.signals.connected
+        self.kwargs['close_session'] = self.signals.close_session
+        self.kwargs['test_timer'] = self.signals.test_timer
 
     def run(self):
         self.function(*self.args, **self.kwargs)

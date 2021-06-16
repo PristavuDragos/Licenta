@@ -1,5 +1,6 @@
 {
   "server_PORT": 5000,
+  "server_TCP_PORT": 5001,
   "audio_PORT": 5008,
   "video_PORT": 5009,
   "connection_port": 5010,
