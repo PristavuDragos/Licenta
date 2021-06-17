@@ -31,6 +31,8 @@ def run_server():
             payload = packet[0].decode().split("\/")
             if payload[0] == "CreateSession":
                 create_request(payload)
+            elif payload[0] == "ConnectToWaitingRoom":
+                connect_to_waiting_room_request(payload)
             elif payload[0] == "ConnectToSession":
                 connect_request(payload)
             elif payload[0] == "CloseSession":
@@ -69,6 +71,19 @@ def create_request(payload):
         server_sender_socket.sendto(message, address)
     except BaseException as err:
         server_sender_socket.sendto(bytes(err), address)
+
+
+def connect_to_waiting_room_request(payload):
+    address = (payload[2], int(payload[3]))
+    session_code = payload[4]
+    password = payload[5]
+    validation = meeting_session_collection.validate_connection([session_code, password])
+    if validation[0] and session_code in existing_sessions_addresses:
+        message = bytes("ConnectToWaitingRoom" + "\\/", "utf-8")
+        server_sender_socket.sendto(message, address)
+        existing_sessions.get(session_code).put_client_in_waiting_room([payload[1], payload[6], address])
+    else:
+        server_sender_socket.sendto(bytes("InvalidSession", "utf-8"), address)
 
 
 def connect_request(payload):

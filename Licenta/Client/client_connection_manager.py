@@ -9,6 +9,7 @@ receive_packets = None
 connection_timeout = None
 server_session_address = None
 response_status = None
+keep_waiting = None
 
 
 def packet_receiver(*args, **signals):
@@ -46,9 +47,12 @@ def packet_receiver(*args, **signals):
             elif payload[0] == "CloseSession":
                 signals["close_session"].emit()
             elif payload[0] == "TestTimer":
-                print("dea")
                 params = [int(payload[1]), int(payload[2]), int(payload[3])]
                 signals["test_timer"].emit(params)
+            elif payload[0] == "WaitingList":
+                waiting_list = main_client.get_list_from_string(payload[1])
+                signals["send_data"].emit(waiting_list)
+
         except:
             if time.perf_counter() - connection_timeout > main_client.settings["connection_timeout"]:
                 main_client.close()
@@ -99,6 +103,75 @@ def initiate_session(params):
         return ["Session created.", session_code]
 
 
+def connect_to_waiting_room(params):
+    global received_response
+    global connection_timeout
+    global response_status
+    receiver_socket = main_client.main_client_socket
+    sock_address = receiver_socket.getsockname()
+    sender_socket = main_client.sender_socket
+    received_response = False
+    response_status = -1
+    attempt_count = 0
+    session_code = params[0]
+    password = params[1]
+    message = bytes("ConnectToWaitingRoom" + "\\/" + str(main_client.client_id) + "\\/" +
+                    str(sock_address[0]) + "\\/" + str(sock_address[1]) + "\\/" +
+                    str(session_code) + "\\/" + password + "\\/" + main_client.client_name, "utf-8")
+    while not received_response and attempt_count < 2:
+        attempt_count += 1
+        sender_socket.sendto(message, (main_client.settings["server_IP"], main_client.settings["server_PORT"]))
+        try:
+            packet = receiver_socket.recvfrom(main_client.settings["UDP_packet_size"])
+            payload = packet[0].decode().split("\/")
+            if payload[0] == "ConnectToWaitingRoom":
+                received_response = True
+                response_status = 1
+            elif payload[0] == "InvalidSession":
+                response_status = 0
+                received_response = True
+        except Exception as err:
+            print(str(err))
+            pass
+    if attempt_count == 2 and response_status == -1:
+        return ["Server did not respond."]
+    elif response_status == 0:
+        return ["Invalid session credentials."]
+    else:
+        return ["Connected."]
+
+
+def awaiting_permission(*args, **signals):
+    global received_response
+    global connection_timeout
+    global response_status
+    global keep_waiting
+    receiver_socket = main_client.main_client_socket
+    received_response = False
+    keep_waiting = True
+    response_status = -1
+    attempt_count = 0
+    while not received_response and attempt_count < 60 and keep_waiting:
+        attempt_count += 1
+        try:
+            packet = receiver_socket.recvfrom(main_client.settings["UDP_packet_size"])
+            payload = packet[0].decode().split("\/")
+            print(payload)
+            if payload[0] == "ApprovalMessage":
+                received_response = True
+                response_status = int(payload[1])
+                signals["update_callback"].emit(response_status)
+            else:
+                response_status = -1
+                received_response = True
+                signals["update_callback"].emit(response_status)
+        except Exception as err:
+            print(str(err))
+            pass
+        if keep_waiting and attempt_count == 60 and response_status == -1:
+            signals["update_callback"].emit(response_status)
+
+
 def connect_to_session(params):
     global received_response
     global connection_timeout
@@ -117,7 +190,7 @@ def connect_to_session(params):
     session_code = params[0]
     password = params[1]
     message = bytes("ConnectToSession" + "\\/" + str(main_client.client_id) + "\\/" + str(sock_address[0]) +
-                    "\\/" + str(sock_address[1]) + "\\/" +str(session_code) + "\\/" + str(video_sock[0]) +
+                    "\\/" + str(sock_address[1]) + "\\/" + str(session_code) + "\\/" + str(video_sock[0]) +
                     "\\/" + str(video_sock[1]) + "\\/" + str(audio_sock[0]) + "\\/" + str(audio_sock[1]) +
                     "\\/" + password + "\\/" + main_client.client_name, "utf-8")
     while not received_response and attempt_count < 2:
@@ -186,6 +259,13 @@ def require_feeds(list_index):
     sender_socket = main_client.sender_socket
     message = bytes("RequireFeeds" + "\\/" + str(main_client.client_id) + "\\/" + str(list_index), "utf-8")
     sender_socket.sendto(message, server_session_address)
+
+
+def send_approval_list(approval_list):
+    sender_socket = main_client.sender_socket
+    message = bytes("ApprovalList" + "\\/" + str(approval_list), "utf-8")
+    sender_socket.sendto(message, server_session_address)
+    print("trimis")
 
 
 def stop_packet_receiver():
@@ -374,6 +454,11 @@ def download_solutions(params):
         print(err)
         return -1
     return 1
+
+
+def stop_waiting():
+    global keep_waiting
+    keep_waiting = False
 
 
 def start_test():

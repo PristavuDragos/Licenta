@@ -5,16 +5,9 @@ from Client import client_connection_manager, audio_stream, video_stream
 from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QIcon, QPixmap, QColor
 from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QGridLayout, QVBoxLayout, QHBoxLayout, QFileDialog
-
+from Client.CustomGUI.waiting_room_page import WaitingRoomPopup
 from Client.CustomGUI import confirmation_dialog
 from Client.CustomGUI.participant_list_page import ParticipantListPopup
-from Client import main_client
-from Client.CustomGUI.create_session import CreateSessionPopup
-from Client.CustomGUI.settings_menu import SettingsMenuPopup
-from Client.CustomGUI.join_session import JoinSessionPopup
-from Client.CustomGUI.register import RegisterPopup
-from Client.CustomGUI.login import LoginPopup
-from Client.worker_thread import Worker
 
 
 class SessionPageWidget(QWidget):
@@ -39,6 +32,8 @@ class SessionPageWidget(QWidget):
         self.max_pages = 1
         self.participant_indexing = 15
         self.participants_list = []
+        self.waiting_room_dialog_active = False
+        self.waiting_room_dialog = WaitingRoomPopup(self)
         self.list_dialog_active = False
         self.list_dialog = ParticipantListPopup(self)
         main_layout = QVBoxLayout(self)
@@ -68,6 +63,8 @@ class SessionPageWidget(QWidget):
         self.time_label.hide()
         self.participant_list_button = QPushButton("Participants")
         self.participant_list_button.clicked.connect(self.show_participants)
+        self.waiting_room_button = QPushButton("Waiting Room")
+        self.waiting_room_button.clicked.connect(self.show_waiting_room)
         # self.participant_list_button.hide()
         self.download_solutions = QPushButton("Download Solutions")
         self.download_solutions.clicked.connect(self.download_solution_files)
@@ -109,6 +106,7 @@ class SessionPageWidget(QWidget):
         self.top_layout.addWidget(self.page_label)
         self.top_layout.addWidget(self.page_right)
         self.top_layout.addStretch()
+        self.top_layout.addWidget(self.waiting_room_button)
         self.top_layout.addWidget(self.participant_list_button)
 
         self.quit = QPushButton("Leave")
@@ -166,6 +164,7 @@ class SessionPageWidget(QWidget):
         if not show:
             self.session_code_label.hide()
             self.participant_list_button.hide()
+            self.waiting_room_button.hide()
             self.close_meeting_button.hide()
             self.start_test_button.hide()
             self.upload_subject.hide()
@@ -175,6 +174,7 @@ class SessionPageWidget(QWidget):
         else:
             self.session_code_label.show()
             self.participant_list_button.show()
+            self.waiting_room_button.show()
             self.close_meeting_button.show()
             self.start_test_button.show()
             self.upload_subject.show()
@@ -268,6 +268,9 @@ class SessionPageWidget(QWidget):
         self.set_owner_buttons(False)
         self.par.exit_session()
         self.par.switch_to_home_page()
+
+    def set_waiting_room(self, waiting_list):
+        self.waiting_room_dialog.waiting_list = waiting_list
 
     def set_participant_list(self, participants):
         self.participants_list = participants
@@ -400,6 +403,15 @@ class SessionPageWidget(QWidget):
         self.list_dialog_active = True
         self.list_dialog.show()
         self.list_dialog.set_labels(self.participants_list)
+
+    def show_waiting_room(self):
+        self.waiting_room_dialog_active = True
+        self.waiting_room_dialog.set_labels()
+        self.waiting_room_dialog.show()
+
+    def close_waiting_room_dialog(self):
+        self.waiting_room_dialog_active = False
+        self.waiting_room_dialog.hide()
 
     def close_dialog(self):
         self.list_dialog_active = False

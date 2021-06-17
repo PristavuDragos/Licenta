@@ -11,6 +11,7 @@ class MeetingSession:
         self.session_thread = threading.Thread(target=self.run_session, args=[session_id, settings])
         self.session_active = True
         self.participants = {}
+        self.waiting_room = {}
         self.participants_keep_alive = {}
         self.owner = session_owner
         self.test_start_timestamp = -1
@@ -33,9 +34,37 @@ class MeetingSession:
                 elapsed_time = round(time.perf_counter() - self.test_start_timestamp) // 60
                 self.send_test_timer(client_id, elapsed_time)
 
+    def put_client_in_waiting_room(self, params):
+        client_id = str(params[0])
+        if client_id == self.owner[0]:
+            message = bytes("ApprovalMessage" + "\\/" + "1", "utf-8")
+            self.sender_socket.sendto(message, (self.owner[1], int(self.owner[2])))
+        elif client_id not in self.waiting_room:
+            self.waiting_room[client_id] = [params[1], params[2]]
+            self.send_waiting_list()
+
+    def send_waiting_list(self):
+        waiting_list = []
+        for key, value in self.waiting_room.items():
+            waiting_list.append([key, value[0]])
+        message = bytes("WaitingList" + "\\/" + str(waiting_list), "utf-8")
+        self.sender_socket.sendto(message, (self.owner[1], int(self.owner[2])))
+
+    def send_approval_messages(self, approval_list):
+        for it in approval_list:
+            if it[0] in self.waiting_room:
+                try:
+                    values = self.waiting_room.pop(it[0], None)
+                    message = bytes("ApprovalMessage" + "\\/" + it[1], "utf-8")
+                    self.sender_socket.sendto(message, values[1])
+                except Exception as err:
+                    print(err)
+        self.send_waiting_list()
+
     def disconnect_client(self, client_id):
         self.participants.pop(client_id, None)
         self.participants_keep_alive.pop(client_id, None)
+        self.waiting_room.pop(client_id, None)
         self.send_participant_list()
 
     def send_participant_list(self):
@@ -97,6 +126,8 @@ class MeetingSession:
                 elif payload[0] == "StartTest":
                     self.test_start_timestamp = time.perf_counter()
                     self.send_initial_timer()
+                elif payload[0] == "ApprovalList":
+                    self.send_approval_messages(get_list_from_string(payload[1]))
             except Exception as err:
                 pass
             current_time = time.perf_counter()
@@ -125,6 +156,22 @@ class MeetingSession:
         self.session_thread = threading.Thread(target=self.run_session, args=[session_id, settings])
         self.session_thread.start()
         return self.stream_handler.start_stream_handler(self.session_socket.getsockname())
+
+
+def get_list_from_string(string_list):
+    list_ = []
+    try:
+        string_list = string_list.split("\'")
+        iterator = 0
+        while iterator < len(string_list):
+            if iterator % 2 == 1:
+                list_.append([string_list[iterator], string_list[iterator + 2]])
+                iterator += 2
+            iterator += 1
+        return list_
+    except Exception as err:
+        print(err)
+
 
 # def init_session(session_owner, settings):
 #     global session_active

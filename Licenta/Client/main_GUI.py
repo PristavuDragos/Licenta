@@ -89,6 +89,7 @@ class MainGUI(QMainWindow):
     def start_packet_receiver(self, address):
         worker = Worker(client_connection_manager.packet_receiver, address)
         worker.signals.update.connect(self.set_participant_list)
+        worker.signals.send_data.connect(self.session_page_widget.set_waiting_room)
         worker.signals.close_session.connect(self.session_closed_by_owner)
         worker.signals.test_timer.connect(self.set_test_timer)
         self.start_video_packet_processor()
