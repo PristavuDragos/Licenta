@@ -24,7 +24,6 @@ class MainPageWidget(QWidget):
         self.test.clicked.connect(parent.switch_to_session_screen)
         self.test.move(width / 10 * 9, height / 10 * 9 + 20)
 
-
         self.client_settings = settings
         self.login_button = QPushButton()
         self.login_button.setFixedSize(button_size)
@@ -91,12 +90,22 @@ class MainPageWidget(QWidget):
         register.show()
 
     def create_session(self):
-        create_session = CreateSessionPopup(self.signals, self)
-        create_session.show()
+        self.client_settings = self.par.update_settings()
+        if self.client_settings["logged_in"] == 1:
+            create_session = CreateSessionPopup(self.signals, self)
+            create_session.show()
+        else:
+            self.user_label.setText(
+                "You are currently not logged in.\nYou need to be logged in to create/join a session")
 
     def join_session(self):
-        join_session = JoinSessionPopup(self.signals, self)
-        join_session.show()
+        self.client_settings = self.par.update_settings()
+        if self.client_settings["logged_in"] == 1:
+            join_session = JoinSessionPopup(self.signals, self)
+            join_session.show()
+        else:
+            self.user_label.setText(
+                "You are currently not logged in.\nYou need to be logged in to create/join a session")
 
     def settings(self):
         settings_menu = SettingsMenuPopup(self)

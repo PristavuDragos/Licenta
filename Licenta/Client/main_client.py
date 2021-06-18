@@ -49,14 +49,19 @@ def set_window(window):
 def set_participant_list(string_list):
     global participant_list
     global main_window
-    participant_list = []
+    participant_list = get_list_from_string(string_list)
+
+
+def get_list_from_string(string_list):
+    list_ = []
     string_list = string_list.split("\'")
     iterator = 0
     while iterator < len(string_list):
         if iterator % 2 == 1:
-            participant_list.append([string_list[iterator], string_list[iterator + 2]])
+            list_.append([string_list[iterator], string_list[iterator + 2]])
             iterator += 2
         iterator += 1
+    return list_
 
 
 def set_addresses(addresses):

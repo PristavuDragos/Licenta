@@ -1,3 +1,4 @@
+import socket
 import time
 import feed_receiver
 import main_client
@@ -8,6 +9,7 @@ receive_packets = None
 connection_timeout = None
 server_session_address = None
 response_status = None
+keep_waiting = None
 
 
 def packet_receiver(*args, **signals):
@@ -42,6 +44,15 @@ def packet_receiver(*args, **signals):
                 connection_timeout = time.perf_counter()
             elif payload[0] == "KeepAlive":
                 connection_timeout = time.perf_counter()
+            elif payload[0] == "CloseSession":
+                signals["close_session"].emit()
+            elif payload[0] == "TestTimer":
+                params = [int(payload[1]), int(payload[2]), int(payload[3])]
+                signals["test_timer"].emit(params)
+            elif payload[0] == "WaitingList":
+                waiting_list = main_client.get_list_from_string(payload[1])
+                signals["send_data"].emit(waiting_list)
+
         except:
             if time.perf_counter() - connection_timeout > main_client.settings["connection_timeout"]:
                 main_client.close()
@@ -92,6 +103,75 @@ def initiate_session(params):
         return ["Session created.", session_code]
 
 
+def connect_to_waiting_room(params):
+    global received_response
+    global connection_timeout
+    global response_status
+    receiver_socket = main_client.main_client_socket
+    sock_address = receiver_socket.getsockname()
+    sender_socket = main_client.sender_socket
+    received_response = False
+    response_status = -1
+    attempt_count = 0
+    session_code = params[0]
+    password = params[1]
+    message = bytes("ConnectToWaitingRoom" + "\\/" + str(main_client.client_id) + "\\/" +
+                    str(sock_address[0]) + "\\/" + str(sock_address[1]) + "\\/" +
+                    str(session_code) + "\\/" + password + "\\/" + main_client.client_name, "utf-8")
+    while not received_response and attempt_count < 2:
+        attempt_count += 1
+        sender_socket.sendto(message, (main_client.settings["server_IP"], main_client.settings["server_PORT"]))
+        try:
+            packet = receiver_socket.recvfrom(main_client.settings["UDP_packet_size"])
+            payload = packet[0].decode().split("\/")
+            if payload[0] == "ConnectToWaitingRoom":
+                received_response = True
+                response_status = 1
+            elif payload[0] == "InvalidSession":
+                response_status = 0
+                received_response = True
+        except Exception as err:
+            print(str(err))
+            pass
+    if attempt_count == 2 and response_status == -1:
+        return ["Server did not respond."]
+    elif response_status == 0:
+        return ["Invalid session credentials."]
+    else:
+        return ["Connected."]
+
+
+def awaiting_permission(*args, **signals):
+    global received_response
+    global connection_timeout
+    global response_status
+    global keep_waiting
+    receiver_socket = main_client.main_client_socket
+    received_response = False
+    keep_waiting = True
+    response_status = -1
+    attempt_count = 0
+    while not received_response and attempt_count < 60 and keep_waiting:
+        attempt_count += 1
+        try:
+            packet = receiver_socket.recvfrom(main_client.settings["UDP_packet_size"])
+            payload = packet[0].decode().split("\/")
+            print(payload)
+            if payload[0] == "ApprovalMessage":
+                received_response = True
+                response_status = int(payload[1])
+                signals["update_callback"].emit(response_status)
+            else:
+                response_status = -1
+                received_response = True
+                signals["update_callback"].emit(response_status)
+        except Exception as err:
+            print(str(err))
+            pass
+        if keep_waiting and attempt_count == 60 and response_status == -1:
+            signals["update_callback"].emit(response_status)
+
+
 def connect_to_session(params):
     global received_response
     global connection_timeout
@@ -110,7 +190,7 @@ def connect_to_session(params):
     session_code = params[0]
     password = params[1]
     message = bytes("ConnectToSession" + "\\/" + str(main_client.client_id) + "\\/" + str(sock_address[0]) +
-                    "\\/" + str(sock_address[1]) + "\\/" +str(session_code) + "\\/" + str(video_sock[0]) +
+                    "\\/" + str(sock_address[1]) + "\\/" + str(session_code) + "\\/" + str(video_sock[0]) +
                     "\\/" + str(video_sock[1]) + "\\/" + str(audio_sock[0]) + "\\/" + str(audio_sock[1]) +
                     "\\/" + password + "\\/" + main_client.client_name, "utf-8")
     while not received_response and attempt_count < 2:
@@ -125,6 +205,7 @@ def connect_to_session(params):
                 server_video_address = (payload[1], int(payload[2]))
                 server_audio_address = (payload[3], int(payload[4]))
                 server_session_address = (payload[5], int(payload[6]))
+                session_owner = payload[7]
                 response_status = 1
             elif payload[0] == "InvalidSession":
                 response_status = 0
@@ -142,7 +223,20 @@ def connect_to_session(params):
         return ["Invalid session credentials."]
     else:
         connection_timeout = time.perf_counter()
-        return ["Connected.", server_session_address, server_video_address, server_audio_address]
+        return ["Connected.", server_session_address, server_video_address, server_audio_address, session_owner]
+
+
+def close_session(session_code, client_id):
+    global received_response
+    global response_status
+    receiver_socket = main_client.main_client_socket
+    sock_address = receiver_socket.getsockname()
+    sender_socket = main_client.sender_socket
+    received_response = False
+    response_status = -1
+    message = bytes("CloseSession" + "\\/" + str(sock_address[0]) + "\\/" + str(sock_address[1]) + "\\/" +
+                    session_code + "\\/" + client_id, "utf-8")
+    sender_socket.sendto(message, (main_client.settings["server_IP"], main_client.settings["server_PORT"]))
 
 
 def disconnect_from_session():
@@ -165,6 +259,13 @@ def require_feeds(list_index):
     sender_socket = main_client.sender_socket
     message = bytes("RequireFeeds" + "\\/" + str(main_client.client_id) + "\\/" + str(list_index), "utf-8")
     sender_socket.sendto(message, server_session_address)
+
+
+def send_approval_list(approval_list):
+    sender_socket = main_client.sender_socket
+    message = bytes("ApprovalList" + "\\/" + str(approval_list), "utf-8")
+    sender_socket.sendto(message, server_session_address)
+    print("trimis")
 
 
 def stop_packet_receiver():
@@ -240,6 +341,131 @@ def login_request(params):
         main_client.set_client(payload[2], payload[3])
         main_client.change_login_status(1)
         return "Logged in successfully!"
+
+
+def upload_file(params):
+    filename = params[0]
+    session_code = params[1]
+    file_type = params[2]
+    try:
+        tcp_client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        tcp_client_socket.connect((main_client.settings["server_IP"], main_client.settings["server_TCP_PORT"]))
+        tcp_client_socket.settimeout(5)
+        print(filename)
+        if file_type == 0:
+            message = bytes("UploadTest" + "\\/" + session_code, "utf-8")
+            tcp_client_socket.send(message)
+        elif file_type == 1:
+            username = params[3]
+            message = bytes("UploadSolution" + "\\/" + session_code + "\\/" + username, "utf-8")
+            tcp_client_socket.send(message)
+        response = tcp_client_socket.recv(1024).decode()
+        print(response)
+        if response == "Start":
+            file = open(filename, "rb")
+            data = file.read(1024)
+            while data:
+                tcp_client_socket.send(data)
+                data = file.read(1024)
+            file.close()
+            print("Done")
+        tcp_client_socket.close()
+    except Exception as err:
+        print(err)
+        return -1
+    return 1
+
+
+def download_subject(params):
+    session_code = params[0]
+    filename = params[1]
+    try:
+        tcp_client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        tcp_client_socket.connect((main_client.settings["server_IP"], main_client.settings["server_TCP_PORT"]))
+        tcp_client_socket.settimeout(5)
+        message = bytes("DownloadSubject" + "\\/" + session_code, "utf-8")
+        tcp_client_socket.send(message)
+        response = tcp_client_socket.recv(1024).decode()
+        print(response)
+        checker = "Done".encode("utf-8")
+        if response == "Proceed":
+            file = open(filename, "wb")
+            tcp_client_socket.send("Start".encode("utf-8"))
+            while True:
+                data = tcp_client_socket.recv(1024)
+                print(data)
+                if not data:
+                    break
+                else:
+                    if checker in data:
+                        file.write(data[:-4])
+                        break
+                    file.write(data)
+            file.close()
+        tcp_client_socket.close()
+    except Exception as err:
+        print(err)
+        return -1
+    return 1
+
+
+def download_solutions(params):
+    session_code = params[0]
+    directory_name = params[1]
+    finished = False
+    try:
+        tcp_client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        tcp_client_socket.connect((main_client.settings["server_IP"], main_client.settings["server_TCP_PORT"]))
+        tcp_client_socket.settimeout(5)
+        message = bytes("DownloadSolutions" + "\\/" + session_code, "utf-8")
+        tcp_client_socket.send(message)
+        response = tcp_client_socket.recv(1024).decode()
+        done_bytes = "Done".encode("utf-8")
+        end_bytes = "End".encode("utf-8")
+        if response == "Proceed":
+            while not finished:
+                tcp_client_socket.send("Next".encode("utf-8"))
+                username = tcp_client_socket.recv(1024).decode()
+                if username == "End":
+                    finished = True
+                    break
+                print(directory_name + "/" + username + ".pdf")
+                file = open(directory_name + "/" + username + ".pdf", "wb")
+                tcp_client_socket.send("Start".encode("utf-8"))
+                while True:
+                    data = tcp_client_socket.recv(1024)
+                    if not data:
+                        break
+                    else:
+                        if done_bytes in data and end_bytes not in data:
+                            file.write(data[:-4])
+                            break
+                        elif done_bytes in data and end_bytes in data:
+                            finished = True
+                            file.write(data[:-7])
+                            break
+                        elif done_bytes not in data and end_bytes in data:
+                            finished = True
+                            break
+                        file.write(data)
+                file.close()
+        tcp_client_socket.close()
+    except Exception as err:
+        print(err)
+        return -1
+    return 1
+
+
+def stop_waiting():
+    global keep_waiting
+    keep_waiting = False
+
+
+def start_test():
+    global server_session_address
+    sender_socket = main_client.sender_socket
+    message = bytes("StartTest" + "\\/", "utf-8")
+    sender_socket.sendto(message, server_session_address)
 
 
 def close_connection():

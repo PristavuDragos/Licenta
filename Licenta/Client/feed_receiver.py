@@ -124,7 +124,7 @@ def process_video_packets(**signals):
 
 
 def process_audio_packets(packet):
-    audio_player.play_audio_feed(packet[0][12:])
+    audio_player.play_audio_feed(packet[0][9:])
 
 
 def receive_video():

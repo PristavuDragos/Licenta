@@ -6,3 +6,5 @@ class WorkerSignals(QObject):
     update = pyqtSignal(object)
     send_data = pyqtSignal(object)
     connected = pyqtSignal()
+    close_session = pyqtSignal()
+    test_timer = pyqtSignal(object)

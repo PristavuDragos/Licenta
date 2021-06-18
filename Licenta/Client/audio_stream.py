@@ -15,6 +15,7 @@ sample_format = None
 sample_chunk_size = None
 sender_socket = None
 feed_is_on = None
+client_id = None
 
 
 def init(settings, address):
@@ -29,6 +30,8 @@ def init(settings, address):
     global sample_chunk_size
     global sender_socket
     global feed_is_on
+    global client_id
+    client_id = main_client.client_id
     feed_is_on = False
     UDP_packet_size = settings["UDP_packet_size"]
     UDP_payload_size = settings["UDP_payload_size"]
@@ -43,7 +46,6 @@ def init(settings, address):
 
 
 def audio_feed():
-    #audio_test()
     initial_time = time.perf_counter()
     p = pyaudio.PyAudio()
     stream = p.open(format=sample_format,
@@ -57,7 +59,7 @@ def audio_feed():
             data = stream.read(sample_chunk_size)
             payload += data
         timestamp = str(time.perf_counter() - initial_time)[0:7]
-        header = bytes(timestamp + "\\/", "utf-8")
+        header = bytes(timestamp + "\\/" + client_id + "\\/", "utf-8")
         sender_socket.sendto(header + payload, (server_IP, audio_PORT))
 
     stream.stop_stream()
@@ -88,7 +90,6 @@ def audio_test():
         header = bytes(timestamp + "\\/", "utf-8")
         sender_socket.sendto(header + payload, (server_IP, audio_PORT))
         time.sleep(0.3)
-
     stream.stop_stream()
     stream.close()
     p.terminate()

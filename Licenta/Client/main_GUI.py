@@ -1,5 +1,6 @@
 import json
 import sys
+import time
 
 from PyQt5.QtGui import QIcon
 
@@ -10,7 +11,7 @@ from PyQt5.QtCore import QThreadPool, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QStackedWidget
 from qt_material import apply_stylesheet
 import feed_receiver
-from Client.CustomGUI import session_page, gui_signals
+from Client.CustomGUI import session_page, gui_signals, disconnected_dialog
 from worker_thread import Worker
 from CustomGUI import main_page
 
@@ -55,9 +56,18 @@ class MainGUI(QMainWindow):
         self.session_page_widget = session_page.SessionPageWidget(main_client.client_settings, self)
         self.central_widget.addWidget(self.session_page_widget)
         self.participants = []
+        self.test_started = False
+        self.elapsed_test_time = 0
+        self.test_duration = 0
+        self.test_upload_time = 0
         # self.video_labels = {}
         # self.label_grid = QGridLayout(self)
         self.init_ui()
+
+    def update_settings(self):
+        with open("client_settings.json", "r") as settings_file:
+            client_settings = json.load(settings_file)
+        return client_settings
 
     def show_video_feed(self, frame_data):
         self.session_page_widget.show_video_feed(frame_data)
@@ -66,28 +76,10 @@ class MainGUI(QMainWindow):
         self.participants = participant_list
         self.session_page_widget.set_participant_list(participant_list)
 
-    def set_grid(self):
-        counter = 0
-        self.reset_grid()
-        for it in self.participants:
-            label = QLabel(self)
-            label.resize(320, 240)
-            default_label = QtGui.QPixmap(main_client.settings["video_default_width"],
-                                          main_client.settings["video_default_height"])
-            default_label.fill(QtGui.QColor("black"))
-            label.setPixmap(default_label)
-            self.video_labels[it] = label
-            self.label_grid.addWidget(label, counter // 4, counter % 4)
-            counter += 1
-
-    def reset_grid(self):
-        while self.label_grid.count():
-            item = self.label_grid.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                widget.setParent(None)
-
-    def switch_to_session_screen(self, addresses):
+    def switch_to_session_screen(self, params):
+        addresses = params[0]
+        owner = params[1]
+        self.session_page_widget.set_session_data(owner, main_client.client_settings["client_id"], params[2])
         self.session_page_widget.init_streams(main_client.settings, addresses)
         self.central_widget.setCurrentWidget(self.session_page_widget)
 
@@ -97,32 +89,47 @@ class MainGUI(QMainWindow):
     def start_packet_receiver(self, address):
         worker = Worker(client_connection_manager.packet_receiver, address)
         worker.signals.update.connect(self.set_participant_list)
+        worker.signals.send_data.connect(self.session_page_widget.set_waiting_room)
+        worker.signals.close_session.connect(self.session_closed_by_owner)
+        worker.signals.test_timer.connect(self.set_test_timer)
         self.start_video_packet_processor()
         self.worker_threads.start(worker)
+
+    def set_test_timer(self, params):
+        self.session_page_widget.start_timers(params)
+        self.test_started = True
+        self.elapsed_test_time = params[0]
+        self.test_duration = params[1]
+        self.test_upload_time = params[2]
+        try:
+            worker = Worker(self.session_page_widget.session_time_keeper)
+            worker.signals.update.connect(self.timer_update)
+            self.worker_threads.start(worker)
+        except Exception as err:
+            print(err)
+
+    def timer_update(self, params):
+        self.session_page_widget.timer_update(params)
+        self.elapsed_test_time += 1
+
+    def session_closed_by_owner(self):
+        self.session_page_widget.exit()
+        disconnect_dialog = disconnected_dialog.DisconnectPopup("Session closed by host.", self)
+        disconnect_dialog.show()
 
     def start_video_packet_processor(self):
         worker = Worker(feed_receiver.process_video_packets)
         worker.signals.send_data.connect(self.show_video_feed)
         self.worker_threads.start(worker)
 
-    def test_button_action(self):
-        self.start_packet_receiver()
-        self.user_button.hide()
-        self.test_button.hide()
-        main_client.connect_to_server_test("0")
-
-    def user_button_action(self):
-        # self.user_button.hide()
-        self.start_packet_receiver()
-        self.test_button.hide()
-        main_client.connect_to_server("0")
-
     def closeEvent(self, event):
         self.session_page_widget.stop_streams()
+        self.session_page_widget.stop_timer()
         main_client.close()
 
     def exit_session(self):
         self.session_page_widget.stop_streams()
+        self.session_page_widget.stop_timer()
         main_client.close()
 
     def init_ui(self):

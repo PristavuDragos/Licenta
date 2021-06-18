@@ -50,15 +50,20 @@ class StreamHandler:
         self.video_packet_queue = Queue()
         self.audio_data_queue = Queue()
 
-    def send_audio_to_participants(self, payload, timestamp):
+    def send_audio_to_participants(self, packet):
         participants = self.meeting_session.participants
+        header = packet[:35].decode().split("\/")
+        timestamp = header[0]
+        sender = header[1]
+        payload = packet[35:]
         try:
             for client_id, client_addresses in participants.items():
-                address = client_addresses[1]
-                while len(timestamp) < 7:
-                    timestamp = timestamp + "0"
-                header = bytes(str(timestamp) + "\\/", "utf-8")
-                self.stream_sender_socket.sendto(header + payload, address)
+                if client_id != sender:
+                    address = client_addresses[1]
+                    while len(timestamp) < 7:
+                        timestamp = timestamp + "0"
+                    header = bytes(str(timestamp) + "\\/", "utf-8")
+                    self.stream_sender_socket.sendto(header + payload, address)
         except Exception as err:
             print(str(err))
             self.send_audio_to_participants(payload)
@@ -124,7 +129,7 @@ class StreamHandler:
                     pass
 
     def process_audio_packets(self, packet):
-        self.send_audio_to_participants(packet[0][9:], packet[0][:7])
+        self.send_audio_to_participants(packet[0])
 
     def receive_video(self):
         while self.video_receiver_on:
