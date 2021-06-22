@@ -1,6 +1,6 @@
 from threading import Thread
 from Server.Database import meeting_session_collection
-from Utils import functions
+from Server.Database import uploaded_solution_collection
 
 
 class FileServerThread(Thread):
@@ -13,7 +13,6 @@ class FileServerThread(Thread):
     def run(self):
         try:
             msg = self.conn.recv(1024).decode().split("\/")
-            print(msg)
             if msg[0] == "UploadTest":
                 session_code = msg[1]
                 self.conn.send("Start".encode("utf-8"))
@@ -36,7 +35,7 @@ class FileServerThread(Thread):
                         break
                     else:
                         file += data
-                meeting_session_collection.add_session_solution([session_code, file, username])
+                uploaded_solution_collection.insert_solution([session_code, username, file])
             elif msg[0] == "DownloadSubject":
                 session_code = msg[1]
                 self.conn.send("Proceed".encode("utf-8"))
@@ -55,14 +54,19 @@ class FileServerThread(Thread):
             elif msg[0] == "DownloadSolutions":
                 session_code = msg[1]
                 self.conn.send("Proceed".encode("utf-8"))
-                result = meeting_session_collection.get_session_solutions([session_code])
-                solution_array = result[1]
-                if result[0]:
-                    for solution in solution_array:
+                result = uploaded_solution_collection.get_solution_count_of_session([session_code])
+                if result is not None:
+                    for count in range(result):
+                        entry_to_get = count + 1
+                        solution = uploaded_solution_collection.get_solution([session_code, entry_to_get])
                         response = self.conn.recv(1024).decode()
                         if response == "Next":
-                            file = solution[1]
-                            username = solution[0]
+                            if solution[0] == 1:
+                                file = solution[2]
+                                username = solution[1]
+                            else:
+                                file = b""
+                                username = "error"
                             self.conn.send(username.encode("utf-8"))
                             response = self.conn.recv(1024).decode()
                             if response == "Start":

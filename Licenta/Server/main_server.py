@@ -23,8 +23,7 @@ def init_settings():
 
 
 def run_server():
-    db_connection.init()
-    print(main_server_socket.getsockname())
+    db_connection.init(settings)
     while keep_server_up:
         try:
             packet = main_server_socket.recvfrom(settings["UDP_packet_size"])

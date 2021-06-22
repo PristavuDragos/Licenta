@@ -20,10 +20,6 @@ class MainPageWidget(QWidget):
         height = parent.height()
         button_size = QSize(width / 5, height / 10)
 
-        self.test = QPushButton("Test", self)
-        self.test.clicked.connect(parent.switch_to_session_screen)
-        self.test.move(width / 10 * 9, height / 10 * 9 + 20)
-
         self.client_settings = settings
         self.login_button = QPushButton()
         self.login_button.setFixedSize(button_size)

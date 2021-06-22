@@ -3,7 +3,7 @@ import time
 
 from Client import client_connection_manager, audio_stream, video_stream
 from PyQt5.QtCore import QSize, Qt
-from PyQt5.QtGui import QIcon, QPixmap, QColor
+from PyQt5.QtGui import QPixmap, QColor
 from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QGridLayout, QVBoxLayout, QHBoxLayout, QFileDialog
 from Client.CustomGUI.waiting_room_page import WaitingRoomPopup
 from Client.CustomGUI import confirmation_dialog
@@ -65,7 +65,6 @@ class SessionPageWidget(QWidget):
         self.participant_list_button.clicked.connect(self.show_participants)
         self.waiting_room_button = QPushButton("Waiting Room")
         self.waiting_room_button.clicked.connect(self.show_waiting_room)
-        # self.participant_list_button.hide()
         self.download_solutions = QPushButton("Download Solutions")
         self.download_solutions.clicked.connect(self.download_solution_files)
         self.upload_subject = QPushButton("Upload test")
@@ -76,10 +75,10 @@ class SessionPageWidget(QWidget):
         self.download_subject.clicked.connect(self.download_subject_file)
         self.start_test_button = QPushButton("Start Test")
         self.start_test_button.clicked.connect(self.start_test)
-        # self.start_button.hide()
+        self.message_label = QLabel()
+        self.message_label.hide()
         self.close_meeting_button = QPushButton("Close Session")
         self.close_meeting_button.clicked.connect(self.close_meeting)
-        # self.close_meeting_button.hide()
 
         self.page_left = QPushButton()
         self.page_left.setIcon(self.left_arrow_icon)
@@ -144,6 +143,7 @@ class SessionPageWidget(QWidget):
         self.control_layout.addWidget(self.upload_solution)
         self.control_layout.addWidget(self.download_subject)
         self.control_layout.addWidget(self.start_test_button)
+        self.control_layout.addWidget(self.message_label)
         self.control_layout.addStretch()
         self.control_layout.addWidget(self.close_meeting_button)
         self.control_layout.addWidget(self.quit)
@@ -247,22 +247,46 @@ class SessionPageWidget(QWidget):
     def upload_subject_file(self):
         filename = QFileDialog.getOpenFileName(self, 'Open file',
                                                'c:\\', "Document (*.pdf)")
-        client_connection_manager.upload_file([filename[0], self.session_code, 0])
+        self.message_label.show()
+        self.message_label.setText(" Uploading file.")
+        result = client_connection_manager.upload_file([filename[0], self.session_code, 0])
+        if result == -1:
+            self.message_label.setText(" An error occurred")
+        else:
+            self.message_label.setText(" Upload done.")
 
     def upload_solution_file(self):
         self.settings = self.par.update_settings()
         filename = QFileDialog.getOpenFileName(self, 'Open file',
                                                'c:\\', "Document (*.pdf)")
-        client_connection_manager.upload_file([filename[0], self.session_code, 1, self.settings["username"]])
+        self.message_label.show()
+        self.message_label.setText(" Uploading file.")
+        result = client_connection_manager.upload_file([filename[0], self.session_code, 1, self.settings["username"]])
+        if result == -1:
+            self.message_label.setText(" An error occurred")
+        else:
+            self.message_label.setText(" Upload done.")
 
     def download_subject_file(self):
         filename = QFileDialog.getSaveFileName(self, 'Save file',
                                                'c:\\', "Document (*.pdf)")
-        client_connection_manager.download_subject([self.session_code, filename[0]])
+        self.message_label.show()
+        self.message_label.setText(" Downloading.")
+        result = client_connection_manager.download_subject([self.session_code, filename[0]])
+        if result == -1:
+            self.message_label.setText(" An error occurred")
+        else:
+            self.message_label.setText(" Download done.")
 
     def download_solution_files(self):
         directory = QFileDialog.getExistingDirectory(self, "Select Directory")
-        client_connection_manager.download_solutions([self.session_code, directory])
+        self.message_label.show()
+        self.message_label.setText(" Downloading.")
+        result = client_connection_manager.download_solutions([self.session_code, directory])
+        if result == -1:
+            self.message_label.setText(" An error occurred")
+        else:
+            self.message_label.setText(" Download done.")
 
     def exit(self):
         self.set_owner_buttons(False)

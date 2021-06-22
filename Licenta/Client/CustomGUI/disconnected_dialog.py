@@ -1,8 +1,5 @@
-from PyQt5.QtWidgets import QDialog, QGroupBox, QFormLayout, QLabel, QLineEdit, QDialogButtonBox, QVBoxLayout, \
-    QScrollArea, QWidget
+from PyQt5.QtWidgets import QDialog, QLabel, QDialogButtonBox, QVBoxLayout
 from PyQt5.QtCore import Qt
-
-from Client import client_connection_manager
 
 
 class DisconnectPopup(QDialog):

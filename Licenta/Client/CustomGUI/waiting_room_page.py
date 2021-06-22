@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QDialog, QGroupBox, QFormLayout, QLabel, QLineEdit, QDialogButtonBox, QVBoxLayout, \
+from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QVBoxLayout, \
     QScrollArea, QWidget, QCheckBox
 from PyQt5.QtCore import Qt
 

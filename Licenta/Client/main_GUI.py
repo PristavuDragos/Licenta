@@ -1,14 +1,12 @@
 import json
 import sys
-import time
 
 from PyQt5.QtGui import QIcon
 
 import client_connection_manager
 import main_client
-from PyQt5 import QtGui
-from PyQt5.QtCore import QThreadPool, pyqtSignal
-from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QStackedWidget
+from PyQt5.QtCore import QThreadPool
+from PyQt5.QtWidgets import QApplication, QMainWindow, QStackedWidget
 from qt_material import apply_stylesheet
 import feed_receiver
 from Client.CustomGUI import session_page, gui_signals, disconnected_dialog
@@ -60,12 +58,10 @@ class MainGUI(QMainWindow):
         self.elapsed_test_time = 0
         self.test_duration = 0
         self.test_upload_time = 0
-        # self.video_labels = {}
-        # self.label_grid = QGridLayout(self)
         self.init_ui()
 
     def update_settings(self):
-        with open("client_settings.json", "r") as settings_file:
+        with open("../Settings/client_settings.json", "r") as settings_file:
             client_settings = json.load(settings_file)
         return client_settings
 

@@ -2,7 +2,6 @@ import socket
 import time
 import feed_receiver
 import main_client
-import threading
 
 received_response = None
 receive_packets = None
@@ -31,13 +30,6 @@ def packet_receiver(*args, **signals):
                 keep_connection_alive()
             packet = socket.recvfrom(main_client.settings["UDP_packet_size"])
             payload = packet[0].decode().split("\/")
-            # if payload[0] == "Request Accepted":
-            #     received_response = True
-            # elif payload[0] == "Connection Accepted":
-            #     received_response = True
-            #     main_client.set_addresses([(payload[1], int(payload[2])), (payload[3], int(payload[4]))])
-            #     server_session_address = (payload[5], int(payload[6]))
-            #     signals["connected"].emit()
             if payload[0] == "ParticipantsList":
                 main_client.set_participant_list(payload[1])
                 signals["update_callback"].emit(main_client.participant_list)
@@ -156,7 +148,6 @@ def awaiting_permission(*args, **signals):
         try:
             packet = receiver_socket.recvfrom(main_client.settings["UDP_packet_size"])
             payload = packet[0].decode().split("\/")
-            print(payload)
             if payload[0] == "ApprovalMessage":
                 received_response = True
                 response_status = int(payload[1])
@@ -265,7 +256,6 @@ def send_approval_list(approval_list):
     sender_socket = main_client.sender_socket
     message = bytes("ApprovalList" + "\\/" + str(approval_list), "utf-8")
     sender_socket.sendto(message, server_session_address)
-    print("trimis")
 
 
 def stop_packet_receiver():
@@ -351,7 +341,6 @@ def upload_file(params):
         tcp_client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         tcp_client_socket.connect((main_client.settings["server_IP"], main_client.settings["server_TCP_PORT"]))
         tcp_client_socket.settimeout(5)
-        print(filename)
         if file_type == 0:
             message = bytes("UploadTest" + "\\/" + session_code, "utf-8")
             tcp_client_socket.send(message)
@@ -360,7 +349,6 @@ def upload_file(params):
             message = bytes("UploadSolution" + "\\/" + session_code + "\\/" + username, "utf-8")
             tcp_client_socket.send(message)
         response = tcp_client_socket.recv(1024).decode()
-        print(response)
         if response == "Start":
             file = open(filename, "rb")
             data = file.read(1024)
@@ -368,7 +356,6 @@ def upload_file(params):
                 tcp_client_socket.send(data)
                 data = file.read(1024)
             file.close()
-            print("Done")
         tcp_client_socket.close()
     except Exception as err:
         print(err)
@@ -386,14 +373,12 @@ def download_subject(params):
         message = bytes("DownloadSubject" + "\\/" + session_code, "utf-8")
         tcp_client_socket.send(message)
         response = tcp_client_socket.recv(1024).decode()
-        print(response)
         checker = "Done".encode("utf-8")
         if response == "Proceed":
             file = open(filename, "wb")
             tcp_client_socket.send("Start".encode("utf-8"))
             while True:
                 data = tcp_client_socket.recv(1024)
-                print(data)
                 if not data:
                     break
                 else:
@@ -429,7 +414,6 @@ def download_solutions(params):
                 if username == "End":
                     finished = True
                     break
-                print(directory_name + "/" + username + ".pdf")
                 file = open(directory_name + "/" + username + ".pdf", "wb")
                 tcp_client_socket.send("Start".encode("utf-8"))
                 while True:
