@@ -1,6 +1,6 @@
 from PyQt5.QtGui import QRegExpValidator
-from PyQt5.QtWidgets import QDialog, QGroupBox, QFormLayout, QLabel, QLineEdit, QDialogButtonBox, QVBoxLayout, \
-    QGridLayout, QWidget
+from PyQt5.QtWidgets import QDialog, QGroupBox, QLabel, QLineEdit, QDialogButtonBox, QVBoxLayout, \
+    QGridLayout
 from PyQt5.QtCore import Qt, QRegExp
 
 from Client import client_connection_manager
@@ -66,11 +66,6 @@ class CreateSessionPopup(QDialog):
 
     def verify_input(self):
         session_name = self.session_name_edit.text()
-        if len(session_name) < 3:
-            self.warning_label.setText("Give this session a proper name!")
-            return None
-        else:
-            self.warning_label.setText("")
         password = self.password_edit.text()
         duration = self.duration_edit.text()
         upload_time = self.upload_time_edit.text()

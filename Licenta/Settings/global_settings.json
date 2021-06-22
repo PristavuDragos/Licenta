@@ -4,7 +4,7 @@
   "audio_PORT": 5008,
   "video_PORT": 5009,
   "connection_port": 5010,
-  "server_IP": "192.168.0.103",
+  "server_IP": "192.168.0.104",
   "UDP_packet_size": 65000,
   "UDP_payload_size": 64000,
   "audio_channels": 2,
@@ -13,5 +13,6 @@
   "video_default_width": 168,
   "video_default_height": 126,
   "connection_timeout": 149,
-  "local_ip": "127.0.0.1"
+  "local_ip": "127.0.0.1",
+  "db_connection_string": "mongodb://localhost:27017"
 }

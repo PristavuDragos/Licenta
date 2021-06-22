@@ -1,8 +1,8 @@
 import pyaudio
 from Utils import functions
-import threading
 import main_client
 import pygame
+
 channels = None
 fs = None
 sample_chunk_size = None
@@ -37,8 +37,6 @@ def init():
 
 
 def play_audio_feed(payload):
-    #thread = threading.Thread(target=audio_thread, args=[payload])
-    #thread.start()
     sound = pygame.mixer.Sound(payload)
     sound.play()
 

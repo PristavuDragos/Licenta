@@ -19,7 +19,6 @@ def create_session(params):
     session_owner = params[2]
     duration = params[3]
     upload_time = params[4]
-    is_active = True
     try:
         while meeting_session_collection.count_documents({"session_code": session_code}) != 0:
             session_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
@@ -28,7 +27,6 @@ def create_session(params):
             "session_name": session_name,
             "session_code": session_code,
             "password": hash_password.hexdigest(),
-            "is_active": is_active,
             "owner": session_owner,
             "duration": duration,
             "upload_time": upload_time,
@@ -110,15 +108,3 @@ def validate_connection(params):
     except Exception as err:
         print(str(err))
     return [False]
-
-
-def check_if_active(params):
-    global meeting_session_collection
-    session_code = params[0]
-    try:
-        if meeting_session_collection.count_documents({"session_code": session_code}) != 0:
-            session = meeting_session_collection.find_one({"session_code": session_code})
-            return session["is_active"]
-    except Exception as err:
-        print(str(err))
-    return False

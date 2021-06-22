@@ -1,8 +1,5 @@
 import json
-import random
 import socket
-import audio_stream
-import video_stream
 from Client import main_GUI
 import client_connection_manager
 import feed_receiver
@@ -24,7 +21,7 @@ def init_settings():
     global sender_socket
     global client_settings
     global client_name
-    with open("client_settings.json", "r") as settings_file:
+    with open("../Settings/client_settings.json", "r") as settings_file:
         client_settings = json.load(settings_file)
     with open("../Settings/global_settings.json", "r") as settings_file:
         settings = json.load(settings_file)
@@ -83,20 +80,20 @@ def set_client(new_id, username):
     client_settings["client_id"] = client_id
     client_name = username
     client_settings["username"] = username
-    with open("client_settings.json", "w") as settings_file:
+    with open("../Settings/client_settings.json", "w") as settings_file:
         json.dump(client_settings, settings_file)
 
 
 def change_login_status(status):
     global client_settings
     client_settings["logged_in"] = status
-    with open("client_settings.json", "w") as settings_file:
+    with open("../Settings/client_settings.json", "w") as settings_file:
         json.dump(client_settings, settings_file)
 
 
 def logout():
     global client_settings
-    with open("client_settings.json", "r") as settings_file:
+    with open("../Settings/client_settings.json", "r") as settings_file:
         client_settings = json.load(settings_file)
     set_client("-1", "")
     change_login_status(0)
@@ -105,30 +102,6 @@ def logout():
 def start_client():
     main_GUI.init_settings()
     main_GUI.start_ui()
-
-
-# def init_stream():
-#     video_stream.init(settings, server_stream_addresses[0])
-#     video_stream.start_video_feed()
-#     audio_stream.init(settings, server_stream_addresses[1])
-#     audio_stream.start_audio_feed()
-
-
-# def connect_to_server(session_id):
-#     if client_connection_manager.initiate_session():
-#         if client_connection_manager.connect_to_session(session_id, settings):
-#             audio_stream.init(settings, server_stream_addresses[1])
-#             audio_stream.start_audio_feed()
-#             video_stream.init(settings, server_stream_addresses[0])
-#             video_stream.start_video_feed()
-
-
-# def connect_to_server_test(session_id):
-#     if client_connection_manager.connect_to_session(session_id, settings):
-#         audio_stream.init(settings, server_stream_addresses[1])
-#         audio_stream.start_audio_feed()
-#         video_stream.init(settings, server_stream_addresses[0])
-#         video_stream.start_video_feed_test()
 
 
 def close():
