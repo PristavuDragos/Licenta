@@ -84,6 +84,11 @@ def set_client(new_id, username):
         json.dump(client_settings, settings_file)
 
 
+def update_client_settings(new_settings):
+    with open("../Settings/client_settings.json", "w") as settings_file:
+        json.dump(new_settings, settings_file)
+
+
 def change_login_status(status):
     global client_settings
     client_settings["logged_in"] = status

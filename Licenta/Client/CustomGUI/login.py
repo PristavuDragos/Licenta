@@ -9,8 +9,8 @@ class LoginPopup(QDialog):
         super(LoginPopup, self).__init__(parent)
         self.par = parent
         self.setWindowTitle("Login")
-        self.setGeometry(400, 150, 300, 350)
-        self.setFixedSize(300, 350)
+        self.setGeometry(400, 150, 300, 300)
+        self.setFixedSize(300, 300)
 
         self.formGroupBox = QGroupBox("Login")
         layout = QFormLayout()

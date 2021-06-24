@@ -1,54 +1,56 @@
-from PyQt5.QtWidgets import QDialog, QGroupBox, QDialogButtonBox, QVBoxLayout, \
-    QCheckBox, QPushButton, QHBoxLayout
+import json
+
+from PyQt5.QtWidgets import QDialog, QGroupBox, QDialogButtonBox, QVBoxLayout, QCheckBox
 from PyQt5.QtCore import Qt
+from Client import main_client
 
 
 class SettingsMenuPopup(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, settings, parent=None):
         super(SettingsMenuPopup, self).__init__(parent)
         self.setWindowTitle("Settings")
-        self.setGeometry(400, 150, 400, 600)
-        self.setFixedSize(400, 600)
-        print("da")
-        self.general_settings_group = QGroupBox("General Settings")
+        self.setGeometry(400, 150, 300, 300)
+        self.setFixedSize(300, 300)
+        self.general_settings_group = QGroupBox()
         layout = QVBoxLayout()
-        self.b1 = QCheckBox("setare1")
-        self.b1.setChecked(True)
-        # self.b1.stateChanged.connect(lambda: self.btnstate(self.b1))
-        self.b2 = QCheckBox("setare2")
-        self.b2.setChecked(True)
-        self.b3 = QCheckBox("setare3")
-        self.b3.setChecked(True)
-        self.b4 = QCheckBox("setare4")
-        self.b4.setChecked(True)
-        self.b5 = QCheckBox("setare5")
-        self.b5.setChecked(True)
-        layout.addWidget(self.b1)
-        layout.addWidget(self.b2)
-        layout.addWidget(self.b3)
-        layout.addWidget(self.b4)
-        layout.addWidget(self.b5)
-
-        self.test_video_button = QPushButton("Test Video")
-        self.test_audio_button = QPushButton("Test Audio")
-        test_button_layout = QHBoxLayout()
-        test_button_layout.addWidget(self.test_audio_button)
-        test_button_layout.addWidget(self.test_video_button)
-
+        self.client_settings = settings
+        self.video_setting = QCheckBox("Start video when entering session")
+        if self.client_settings["video_start_on_enter"] == 1:
+            self.video_setting.setChecked(True)
+        else:
+            self.video_setting.setChecked(False)
+        self.video_setting.clicked.connect(self.change_video_setting)
+        self.audio_setting = QCheckBox("Start audio when entering session")
+        if self.client_settings["audio_start_on_enter"] == 1:
+            self.audio_setting.setChecked(True)
+        else:
+            self.audio_setting.setChecked(False)
+        self.audio_setting.clicked.connect(self.change_audio_setting)
+        print("ok")
+        layout.addWidget(self.video_setting)
+        layout.addWidget(self.audio_setting)
         self.general_settings_group.setLayout(layout)
+        print("ok")
         button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        button_box.accepted.connect(self.update_settings)
+        button_box.accepted.connect(self.update_client_settings)
         button_box.rejected.connect(self.reject)
+        print("ok")
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(25)
         main_layout.addWidget(self.general_settings_group)
-        main_layout.addLayout(test_button_layout)
         main_layout.addWidget(button_box)
         self.setLayout(main_layout)
 
         self.setWindowModality(Qt.ApplicationModal)
 
-    def update_settings(self):
-        pass
+    def change_audio_setting(self):
+        self.client_settings["audio_start_on_enter"] = 1 if self.audio_setting.isChecked() else 0
+
+    def change_video_setting(self):
+        self.client_settings["video_start_on_enter"] = 1 if self.video_setting.isChecked() else 0
+
+    def update_client_settings(self):
+        main_client.update_client_settings(self.client_settings)
+        self.accept()
 

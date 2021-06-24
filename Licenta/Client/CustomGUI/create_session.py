@@ -18,7 +18,7 @@ class CreateSessionPopup(QDialog):
         grid = QGridLayout()
         session_name_label = QLabel("Session name :")
         session_name_label.setAlignment(Qt.AlignCenter)
-        password_label = QLabel("Password (optional) :")
+        password_label = QLabel("Password :")
         password_label.setAlignment(Qt.AlignCenter)
         duration_label = QLabel("Test duration\n(in minutes)")
         duration_label.setAlignment(Qt.AlignCenter)

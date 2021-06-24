@@ -38,7 +38,7 @@ def check_credentials(params):
         if user is not None:
             return [user["_id"], user["username"]]
         else:
-            return [-1]
+            return [-1, -1]
     except Exception as err:
         print(str(err))
     return None

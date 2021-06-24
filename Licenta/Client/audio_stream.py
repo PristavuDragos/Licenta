@@ -54,7 +54,7 @@ def audio_feed():
                     input=True)
     while feed_is_on:
         payload = b""
-        while len(payload) < 61440:
+        while len(payload) < UDP_payload_size / 5 * 4:
             data = stream.read(sample_chunk_size)
             payload += data
         timestamp = str(time.perf_counter() - initial_time)[0:7]

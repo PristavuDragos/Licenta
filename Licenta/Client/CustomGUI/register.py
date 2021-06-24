@@ -131,7 +131,7 @@ class RegisterPopup(QDialog):
         else:
             self.warning_label.setText("")
         password_confirmation_state = self.password_validator.validate(self.password_confirmation_edit.text(), 0)[0]
-        if password_confirmation_state == 1:
+        if password_confirmation_state == 1 or self.password_edit.text() != self.password_confirmation_edit.text():
             self.warning_label.setText("Passwords don't match!")
             return None
         else:

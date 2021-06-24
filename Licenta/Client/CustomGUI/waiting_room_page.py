@@ -9,7 +9,7 @@ class WaitingRoomPopup(QDialog):
     def __init__(self, parent=None):
         super(WaitingRoomPopup, self).__init__(parent)
         self.par = parent
-        self.setWindowTitle("Participant List")
+        self.setWindowTitle("Waiting List")
         self.setGeometry(400, 150, 250, 400)
         self.setFixedWidth(250)
         self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)

@@ -27,10 +27,10 @@ class MainPageWidget(QWidget):
         self.logout_button.setFixedSize(button_size)
         self.register_button = QPushButton()
         self.register_button.setFixedSize(button_size)
-        self.new_session_button = QPushButton("New Session")
+        self.new_session_button = QPushButton("Create Session")
         self.new_session_button.setFixedSize(button_size)
         self.new_session_button.clicked.connect(self.create_session)
-        self.join_session_button = QPushButton("Join")
+        self.join_session_button = QPushButton("Join Session")
         self.join_session_button.setFixedSize(button_size)
         self.join_session_button.clicked.connect(self.join_session)
         self.login_button.setText("Login")
@@ -104,7 +104,8 @@ class MainPageWidget(QWidget):
                 "You are currently not logged in.\nYou need to be logged in to create/join a session")
 
     def settings(self):
-        settings_menu = SettingsMenuPopup(self)
+        self.client_settings = self.par.update_settings()
+        settings_menu = SettingsMenuPopup(self.client_settings, self)
         settings_menu.show()
 
     def logout(self):

@@ -110,7 +110,7 @@ def close_request(payload):
         session = existing_sessions.get(session_code)
         if session.owner[0] == client_id:
             session.send_disconnect_message()
-            existing_sessions.pop(session_code)
+            existing_sessions.pop(session_code).close_session()
             existing_sessions_addresses.pop(session_code)
 
 

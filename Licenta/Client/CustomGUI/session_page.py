@@ -60,6 +60,7 @@ class SessionPageWidget(QWidget):
         self.session_code_label = QLabel("Session code:\n ASD")
         self.session_code_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.time_label = QLabel()
+        self.time_label.setAlignment(Qt.AlignCenter)
         self.time_label.hide()
         self.participant_list_button = QPushButton("Participants")
         self.participant_list_button.clicked.connect(self.show_participants)
@@ -136,7 +137,7 @@ class SessionPageWidget(QWidget):
         self.control_layout.addWidget(self.video)
         self.control_layout.setAlignment(self.video, Qt.AlignLeft)
         self.control_layout.addStretch()
-        self.control_layout.addWidget(self.test_btn)
+        #self.control_layout.addWidget(self.test_btn)
         self.control_layout.setAlignment(self.test_btn, Qt.AlignCenter)
         self.control_layout.addWidget(self.download_solutions)
         self.control_layout.addWidget(self.upload_subject)
@@ -416,6 +417,7 @@ class SessionPageWidget(QWidget):
             counter_ += 1
 
     def start_test(self):
+        self.start_test_button.setDisabled(True)
         client_connection_manager.start_test()
 
     def close_meeting(self):

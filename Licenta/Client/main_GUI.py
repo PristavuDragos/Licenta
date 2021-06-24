@@ -24,6 +24,12 @@ def init_settings():
         settings = json.load(settings_file)
 
 
+def get_client_settings():
+    with open("../../Settings/client_settings.json", "r") as settings_file:
+        client_settings = json.load(settings_file)
+    return client_settings
+
+
 class MainGUI(QMainWindow):
     def __init__(self):
         super().__init__()

@@ -87,13 +87,6 @@ class MeetingSession:
             message = bytes("KeepAlive" + "\\/", "utf-8")
             self.sender_socket.sendto(message, address)
 
-    def check_session_still_active(self):
-        if self.session_active:
-            if len(self.participants) == 0 or True:
-                self.session_active = True
-            else:
-                self.session_active = True
-
     def send_initial_timer(self):
         for client_id in self.participants.keys():
             self.send_test_timer(client_id, 0)
@@ -138,7 +131,6 @@ class MeetingSession:
                         clients_to_dc.append(client_id)
                 for client_id in clients_to_dc:
                     self.disconnect_client(client_id)
-            self.check_session_still_active()
 
     def close_session(self):
         self.session_active = False
